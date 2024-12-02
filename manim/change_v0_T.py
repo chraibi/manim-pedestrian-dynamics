@@ -33,21 +33,21 @@ def setup_axes():
     return axes
 
 
-def get_T_behavior_text(T_value):
+def get_T_behavior_text(T_value, Tmin, Tmax):
     """Return the explanation based on the current value of T."""
-    if T_value == 0.3:
+    if T_value == Tmin:
         return "Agents have almost no time gap, behaving aggressively."
-    elif T_value == 1.7:
+    elif T_value == Tmax:
         return "Agents maintain a large time gap, prioritizing safety."
     else:
         return ""
 
 
-def get_V0_behavior_text(v0_value):
+def get_V0_behavior_text(v0_value, vmin, vmax):
     """Return the explanation based on the current value of v0."""
-    if v0_value == 2:
+    if v0_value == vmax:
         return "Agents are running."
-    elif v0_value == 0.5:
+    elif v0_value == vmin:
         return "Agents are slow, almost disinterested."
     else:
         return ""
@@ -60,6 +60,10 @@ T_values = [
     0.6,
     0.5,
     0.4,
+    0.3,
+    0.2,
+    0.1,
+    0.2,
     0.3,
     0.4,
     0.5,
@@ -74,6 +78,12 @@ T_values = [
     1.4,
     1.5,
     1.6,
+    1.7,
+    1.8,
+    1.9,
+    2.0,
+    1.9,
+    1.8,
     1.7,
     1.6,
     1.5,
@@ -119,13 +129,72 @@ v0_values = [
 ]
 
 
+def bounce_out(t):
+    """
+    A bounce out rate function that creates a bouncing effect.
+    Borrowed from Manim's animation utilities.
+    """
+    a = 0.1
+    if t < 4 / 11.0:
+        return a * (121 * t * t / 16.0)
+    elif t < 8 / 11.0:
+        return a * (363 / 40.0 * t * t - 99 / 10.0 * t + 17 / 5.0)
+    elif t < 9 / 10.0:
+        return a * (4356 / 361.0 * t * t - 35442 / 1805.0 * t + 16061 / 1805.0)
+    return a * (54 / 5.0 * t * t - 513 / 25.0 * t + 268 / 25.0)
+
+
 class ChangingTAndV0(Scene):
     def construct(self):
         axes = setup_axes()
         # Initial values
         T = ValueTracker(1)
         v0 = ValueTracker(1)
+        # ----- circle
+        # New section to visualize agent diameter
+        circle_radius = 1  # Assuming l = 1 diameter
+        circle = Circle(radius=circle_radius, color=BLUE, fill_opacity=0.3)
+        # For a half circle, you'll create a semicircle
+        semicircle = Arc(radius=1, angle=PI, color=GREEN, fill_opacity=0.3)
 
+        dot = Dot()
+        self.add(dot)
+        self.play(GrowFromCenter(circle))
+        # Create a LaTeX label
+        agent_label = MathTex(
+            r"\text{Agent is a circle with diameter } l", font_size=24
+        ).next_to(dot, UP * 5)  # Position the label above the dot
+
+        self.add(agent_label)
+        dot2 = dot.copy().shift(RIGHT).set_color(BLUE)
+        dot3 = dot2.copy().set_color(BLUE)
+
+        self.play(Transform(dot, dot2))
+        self.play(MoveAlongPath(dot2, semicircle), run_time=1, rate_func=linear)
+        line = Line(dot3, dot2)
+        diameter_label = MathTex(r"l", font_size=28).next_to(line, DOWN)
+        self.add(line)
+        # Visualize the circle representing agent diameter
+        # self.play(Create(circle))
+        self.play(Write(diameter_label))
+        self.wait(3)
+        # fadeout these elements.
+        self.play(
+            FadeOut(agent_label),
+            diameter_label.animate.next_to(axes.c2p(1, 0), DOWN),
+            FadeOut(line),
+            FadeOut(dot),
+            FadeOut(dot2),
+            FadeOut(dot3),
+            circle.animate.move_to(axes.c2p(1, 0))
+            .scale(0.05)
+            .set_fill(opacity=1)
+            .set_color(WHITE),  # Shrink to dot-like size
+        )
+
+        axes = setup_axes()
+
+        # --------------
         # Precise piecewise function with strict range
         def graph_func(s):
             if s > 6:
@@ -176,14 +245,14 @@ class ChangingTAndV0(Scene):
         # Create T and v0 value texts
         t_text = always_redraw(
             lambda: MathTex(
-                rf"\mathbf{{T = {T.get_value():.1f}\; [s]}}",
+                rf"T = {T.get_value():.1f}\; [s]",
                 font_size=24,
                 color=RED if T.get_value() != 1 else WHITE,
             ).next_to(velocity_eq, DOWN, aligned_edge=LEFT, buff=0.8)
         )
         v0_text = always_redraw(
             lambda: MathTex(
-                rf"\mathbf{{v_0 = {v0.get_value():.1f}\; [m/s]}}",
+                rf"v_0 = {v0.get_value():.1f}\; [m/s]",
                 font_size=24,
                 color=RED if v0.get_value() != 1 else WHITE,
             ).next_to(velocity_eq, DOWN, aligned_edge=LEFT, buff=0.8)
@@ -196,19 +265,25 @@ class ChangingTAndV0(Scene):
 
         # Animate changing T with smooth color transitions
         t_framebox = SurroundingRectangle(velocity_eq[0][24:25], buff=0.08, color=RED)
-
+        t_in_equation = velocity_eq[0][24:25]
+        moving_t = MathTex(r"T", font_size=24).move_to(t_in_equation.get_center())
+        self.play(FocusOn(t_in_equation))
         self.play(Create(t_framebox))
-        x_label0 = MathTex(r"l").next_to(axes.c2p(1, 0), DOWN)
-        self.add(axes, x_label0)
-
+        # x_label0 = MathTex(r"l").next_to(axes.c2p(1, 0), DOWN)
+        # self.add(axes, x_label0)
+        self.play(
+            t_in_equation.animate.set_color(YELLOW),  # Highlight the T in equation
+            moving_t.animate.move_to(t_text[0][0].get_center()),
+            run_time=1,
+        )
+        self.play(Write(t_text))
         # Start graph animation
         self.play(Create(graph))
-        self.play(Write(t_text))
-        # self.add(angle, dot)
-
         explanation_text_T = always_redraw(
             lambda: Text(
-                get_T_behavior_text(T.get_value()),
+                get_T_behavior_text(
+                    T.get_value(), Tmin=min(T_values), Tmax=max(T_values)
+                ),
                 font_size=20,
                 font="Fira Code Symbol",
                 color=YELLOW,
@@ -216,7 +291,9 @@ class ChangingTAndV0(Scene):
         )
         explanation_text_v0 = always_redraw(
             lambda: Text(
-                get_V0_behavior_text(v0.get_value()),
+                get_V0_behavior_text(
+                    v0.get_value(), vmin=min(v0_values), vmax=max(v0_values)
+                ),
                 font_size=20,
                 font="Fira Code Symbol",
                 color=YELLOW,
@@ -250,13 +327,22 @@ class ChangingTAndV0(Scene):
         # ================================ v0 ==================
         # Reset T color and transition to v0
         # self.play(T.animate.set_color(WHITE))
-        self.play(FadeOut(t_text), FadeOut(explanation_text_T))  # Remove T text
-        v0_framebox = SurroundingRectangle(velocity_eq[0][38], buff=0.15, color=RED)
+        self.play(FadeOut(t_text), FadeOut(explanation_text_T), FadeOut(moving_t))
+        self.play(t_in_equation.animate.set_color(WHITE))
+        v0_framebox = SurroundingRectangle(velocity_eq[0][38:40], buff=0.15, color=RED)
+        v0_in_equation = velocity_eq[0][38:40]
+        moving_v0 = MathTex(r"v_0", font_size=24).move_to(v0_in_equation.get_center())
+        self.play(FocusOn(v0_in_equation))
         self.play(ReplacementTransform(t_framebox, v0_framebox))
-
         # Transition to v0
+        self.play(
+            v0_in_equation.animate.set_color(YELLOW),  # Highlight the v0 in equation
+            moving_v0.animate.move_to(v0_text[0][0:2].get_center()),
+            run_time=1,
+        )
 
         self.play(Write(v0_text))  # Add v0 text
+        self.play(FadeOut(moving_v0), v0_in_equation.animate.set_color(WHITE))
 
         # Animate changing v0
         for target_v0 in v0_values:
@@ -283,5 +369,5 @@ class ChangingTAndV0(Scene):
             FadeOut(dashed_line),
             FadeOut(angle),
             FadeOut(filled_angle),
-            FadeOut(x_label0),
+            # FadeOut(x_label0),
         )
