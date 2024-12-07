@@ -145,25 +145,19 @@ def bounce_out(t):
 
 
 class ChangingTAndV0(Scene):
-    def construct(self):
-        axes = setup_axes()
-        # Initial values
-        T = ValueTracker(1)
-        v0 = ValueTracker(1)
-        # ----- circle
-        # New section to visualize agent diameter
+    def visualize_agent_diameter(self, axes):
+        """Visualize the agent diameter as a circle and animate it."""
         circle_radius = 1  # Assuming l = 1 diameter
         circle = Circle(radius=circle_radius, color=BLUE, fill_opacity=0.3)
-        # For a half circle, you'll create a semicircle
         semicircle = Arc(radius=1, angle=PI, color=GREEN, fill_opacity=0.3)
 
         dot = Dot()
         self.add(dot)
         self.play(GrowFromCenter(circle))
-        # Create a LaTeX label
+
         agent_label = MathTex(
             r"\text{Agent is a circle with diameter } l", font_size=24
-        ).next_to(dot, UP * 5)  # Position the label above the dot
+        ).next_to(dot, UP * 5)
 
         self.add(agent_label)
         dot2 = dot.copy().shift(RIGHT).set_color(BLUE)
@@ -174,11 +168,8 @@ class ChangingTAndV0(Scene):
         line = Line(dot3, dot2)
         diameter_label = MathTex(r"l", font_size=28).next_to(line, DOWN)
         self.add(line)
-        # Visualize the circle representing agent diameter
-        # self.play(Create(circle))
         self.play(Write(diameter_label))
         self.wait(3)
-        # fadeout these elements.
         self.play(
             FadeOut(agent_label),
             diameter_label.animate.next_to(axes.c2p(1, 0), DOWN),
@@ -189,11 +180,28 @@ class ChangingTAndV0(Scene):
             circle.animate.move_to(axes.c2p(1, 0))
             .scale(0.05)
             .set_fill(opacity=1)
-            .set_color(WHITE),  # Shrink to dot-like size
+            .set_color(WHITE),
         )
 
+    def construct(self):
         axes = setup_axes()
+        # Initial values
+        T = ValueTracker(1)
+        v0 = ValueTracker(1)
+        axes = setup_axes()
+        self.visualize_agent_diameter(axes)
 
+        # 1 Show circle and explain l. l then moves to the axis.
+        # 2 Show equation.
+        # 3. plot the graph of the equation including the dashed line and the angles.
+        # 4 start with changing T and then v.
+        # 5 fadeout all elements
+        # TODO reduce the size of the function control.
+        # TODO refactor function show equation
+        # TODO refactor function visualize T
+        # TODO refactor function visualize v0
+        # fadeout all elements in one function. Use *args or something so that the arguments are not explicit.
+        # some functions have dependencies. for example vis T and vis v0. entangle them.
         # --------------
         # Precise piecewise function with strict range
         def graph_func(s):
@@ -269,8 +277,6 @@ class ChangingTAndV0(Scene):
         moving_t = MathTex(r"T", font_size=24).move_to(t_in_equation.get_center())
         self.play(FocusOn(t_in_equation))
         self.play(Create(t_framebox))
-        # x_label0 = MathTex(r"l").next_to(axes.c2p(1, 0), DOWN)
-        # self.add(axes, x_label0)
         self.play(
             t_in_equation.animate.set_color(YELLOW),  # Highlight the T in equation
             moving_t.animate.move_to(t_text[0][0].get_center()),
@@ -325,8 +331,6 @@ class ChangingTAndV0(Scene):
                 self.wait(5)
 
         # ================================ v0 ==================
-        # Reset T color and transition to v0
-        # self.play(T.animate.set_color(WHITE))
         self.play(FadeOut(t_text), FadeOut(explanation_text_T), FadeOut(moving_t))
         self.play(t_in_equation.animate.set_color(WHITE))
         v0_framebox = SurroundingRectangle(velocity_eq[0][38:40], buff=0.15, color=RED)
@@ -369,5 +373,4 @@ class ChangingTAndV0(Scene):
             FadeOut(dashed_line),
             FadeOut(angle),
             FadeOut(filled_angle),
-            # FadeOut(x_label0),
         )
