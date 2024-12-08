@@ -177,38 +177,6 @@ def generate_non_overlapping_positions(
     return positions
 
 
-def get_new_line(line):
-    # Explicitly set the start point to the exact coordinates of the original line
-    original_start = line.get_start()
-
-    # Calculate the original length
-    original_length = np.linalg.norm(line.get_end() - line.get_start())
-
-    # Calculate the original direction
-    original_direction = (line.get_end() - line.get_start()) / np.linalg.norm(
-        line.get_end() - line.get_start()
-    )
-
-    # Rotation matrix for slight downward angle
-    angle = -np.pi / 30
-    rotation_matrix = np.array(
-        [
-            [np.cos(angle), -np.sin(angle), 0],
-            [np.sin(angle), np.cos(angle), 0],
-            [1, 0, 0],
-        ]
-    )
-    # Rotate the direction
-    new_direction = np.dot(rotation_matrix, original_direction)
-    # Calculate new endpoint while maintaining original length
-    new_end = original_start + new_direction * original_length
-
-    # Create new arrow with explicitly set start point
-    new_line = Arrow(start=original_start, end=new_end, color=YELLOW)
-
-    return new_line
-
-
 class ChangingTAndV0(Scene):
     def __init__(
         self, *args, config: VisualizationConfig = VisualizationConfig(), **kwargs
