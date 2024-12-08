@@ -1,23 +1,85 @@
-"""Create animation for changing v0 and T in the speed function.
-to run:
-manim -pqh change_v0_T.py
+"""
+Manim animation for visualizing speed function parameters.
+Run with: manim -pqh change_v0_T.py
 """
 
 from manim import *
 import numpy as np
 
-# https://pedestriandynamics.org/models/collision_free_speed_model/
-velocity_eq = (
-    MathTex(
-        r"v(s) = \begin{cases} "
-        + r"0 & 0 \leq s \leq l \\"
-        + r"\min\left(\frac{s-l}{T}, v_0\right) & l < s \leq l + v_0T \\"
-        + r"v_0 & s >  l + v_0T"
-        + r"\end{cases}"
-    )
-    .to_corner(UP + RIGHT)
-    .scale(0.7)
-)
+# Velocity equation parameters
+T_values = [
+    1,
+    # 0.8,
+    # 0.7,
+    # 0.6,
+    # 0.5,
+    # 0.4,
+    # 0.3,
+    # 0.2,
+    # 0.1,
+    # 0.2,
+    # 0.3,
+    # 0.4,
+    # 0.5,
+    # 0.6,
+    # 0.7,
+    # 0.8,
+    # 0.9,
+    # 1,
+    # 1.1,
+    # 1.2,
+    # 1.3,
+    # 1.4,
+    # 1.5,
+    # 1.6,
+    # 1.7,
+    # 1.8,
+    # 1.9,
+    # 2.0,
+    # 1.9,
+    # 1.8,
+    # 1.7,
+    # 1.6,
+    # 1.5,
+    # 1.4,
+    # 1.3,
+    # 1.2,
+    # 1.1,
+    # 1,
+]
+v0_values = [
+    1,
+    # 1.1,
+    # 1.2,
+    # 1.3,
+    # 1.4,
+    # 1.5,
+    # 1.6,
+    # 1.7,
+    # 1.8,
+    # 1.9,
+    # 2,
+    # 1.9,
+    # 1.8,
+    # 1.7,
+    # 1.6,
+    # 1.5,
+    # 1.4,
+    # 1.3,
+    # 1.2,
+    # 1.1,
+    # 1.0,
+    # 0.9,
+    # 0.8,
+    # 0.7,
+    # 0.6,
+    # 0.5,
+    # 0.6,
+    # 0.7,
+    # 0.8,
+    # 0.9,
+    # 1.0,
+]
 
 
 def setup_axes():
@@ -53,98 +115,236 @@ def get_V0_behavior_text(v0_value, vmin, vmax):
         return ""
 
 
-T_values = [
-    1,
-    0.8,
-    0.7,
-    0.6,
-    0.5,
-    0.4,
-    0.3,
-    0.2,
-    0.1,
-    0.2,
-    0.3,
-    0.4,
-    0.5,
-    0.6,
-    0.7,
-    0.8,
-    0.9,
-    1,
-    1.1,
-    1.2,
-    1.3,
-    1.4,
-    1.5,
-    1.6,
-    1.7,
-    1.8,
-    1.9,
-    2.0,
-    1.9,
-    1.8,
-    1.7,
-    1.6,
-    1.5,
-    1.4,
-    1.3,
-    1.2,
-    1.1,
-    1,
-]
-
-v0_values = [
-    1,
-    1.1,
-    1.2,
-    1.3,
-    1.4,
-    1.5,
-    1.6,
-    1.7,
-    1.8,
-    1.9,
-    2,
-    1.9,
-    1.8,
-    1.7,
-    1.6,
-    1.5,
-    1.4,
-    1.3,
-    1.2,
-    1.1,
-    1.0,
-    0.9,
-    0.8,
-    0.7,
-    0.6,
-    0.5,
-    0.6,
-    0.7,
-    0.8,
-    0.9,
-    1.0,
-]
-
-
-def bounce_out(t):
+def generate_non_overlapping_positions(
+    base_position, direction_norm, num_agents=4, seed=42, min_distance=1.0
+):
     """
-    A bounce out rate function that creates a bouncing effect.
-    Borrowed from Manim's animation utilities.
+    Generate non-overlapping agent positions
+
+    Parameters:
+    - base_position: Center point to base positions around
+    - direction_norm: Normalized direction vector
+    - num_agents: Number of agents to position
+    - seed: Random seed for reproducibility
+    - min_distance: Minimum distance between agents
+
+    Returns:
+    List of agent positions
     """
-    a = 0.1
-    if t < 4 / 11.0:
-        return a * (121 * t * t / 16.0)
-    elif t < 8 / 11.0:
-        return a * (363 / 40.0 * t * t - 99 / 10.0 * t + 17 / 5.0)
-    elif t < 9 / 10.0:
-        return a * (4356 / 361.0 * t * t - 35442 / 1805.0 * t + 16061 / 1805.0)
-    return a * (54 / 5.0 * t * t - 513 / 25.0 * t + 268 / 25.0)
+    # Set a fixed random seed
+    np.random.seed(seed)
+
+    positions = []
+    max_attempts = 100
+
+    while len(positions) < num_agents:
+        # Base distance along movement direction with some randomness
+        base_distance = np.random.uniform(1.5, 3.0)
+        base_pos = base_position + direction_norm * base_distance
+
+        # Add random perpendicular offset
+        # Create a perpendicular vector by rotating direction_norm
+        perp_vector = np.array([-direction_norm[1], direction_norm[0], 0])
+        offset = perp_vector * np.random.uniform(-1.5, 1.5)
+
+        candidate_pos = base_pos + offset
+
+        # Check for overlap with existing positions
+        if not any(
+            np.linalg.norm(candidate_pos - existing_pos) < min_distance
+            for existing_pos in positions
+        ):
+            positions.append(candidate_pos)
+
+        # Prevent infinite loop
+        if len(positions) >= num_agents or max_attempts <= 0:
+            break
+        max_attempts -= 1
+
+    return positions
+
+
+def get_new_line(line):
+    # Explicitly set the start point to the exact coordinates of the original line
+    original_start = line.get_start()
+
+    # Calculate the original length
+    original_length = np.linalg.norm(line.get_end() - line.get_start())
+
+    # Calculate the original direction
+    original_direction = (line.get_end() - line.get_start()) / np.linalg.norm(
+        line.get_end() - line.get_start()
+    )
+
+    # Rotation matrix for slight downward angle
+    angle = -np.pi / 30
+    rotation_matrix = np.array(
+        [
+            [np.cos(angle), -np.sin(angle), 0],
+            [np.sin(angle), np.cos(angle), 0],
+            [1, 0, 0],
+        ]
+    )
+    # Rotate the direction
+    new_direction = np.dot(rotation_matrix, original_direction)
+    # Calculate new endpoint while maintaining original length
+    new_end = original_start + new_direction * original_length
+
+    # Create new arrow with explicitly set start point
+    new_line = Arrow(start=original_start, end=new_end, color=YELLOW)
+
+    return new_line
 
 
 class ChangingTAndV0(Scene):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Configuration flags to control visualization stages
+        self.config = {
+            "agentExit": True,
+            "show_agent_diameter": False,
+            "show_equation": False,
+            "animate_t_parameter": False,
+            "animate_v0_parameter": False,
+        }
+
+    def AgentExitVisualization(self, A=1, D=1):
+        # 1. Agent appears
+        agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
+        agent_label = (
+            MathTex(r"i", color=WHITE)
+            .scale(0.7)
+            .move_to(agent_circle.get_center() + LEFT * 0.1)
+        )
+        self.play(GrowFromCenter(agent_circle), Create(agent_label))
+        # 2. Exit icon appears
+        exit_icon = Triangle(fill_color=RED, fill_opacity=0.1, stroke_color=RED)
+        exit_icon.scale(0.3).next_to(agent_circle, RIGHT, buff=4.5)
+        self.play(Create(exit_icon), run_time=1)
+        self.wait(1)
+
+        # 3. Directional line (walking direction) appears
+        direction = exit_icon.get_center() - agent_circle.get_center()
+        direction_to_exit = direction / np.linalg.norm(direction)
+        dashed_line = DashedLine(
+            start=agent_circle.get_center(),
+            end=exit_icon.get_center(),
+            color=GREEN,
+            stroke_width=2,
+        )
+        arrow_to_exit = Line(
+            start=agent_circle.get_center(),
+            end=agent_circle.get_center() + direction_to_exit,
+            color=YELLOW,
+        )
+        arrow_to_exit.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        e0_label = MathTex(r"\overrightarrow{e_0}", color=WHITE).scale(0.7)
+        e0_label.shift(UP * 0.3 + RIGHT * 4.0)
+        self.play(Create(dashed_line), run_time=1)
+        self.play(Create(arrow_to_exit), run_time=1)
+        self.play(Create(e0_label), run_time=1)
+        self.wait(1)
+
+        # 4. Four additional agents appear with randomized positions
+        other_agents = VGroup()
+        other_agents_labels = VGroup()
+        # Calculate the direction vector from the agent to the exit
+        direction = exit_icon.get_center() - agent_circle.get_center()
+        direction_norm = direction / np.linalg.norm(direction)
+
+        agent_positions = generate_non_overlapping_positions(
+            base_position=agent_circle.get_center(),
+            direction_norm=direction_norm,
+            min_distance=1.2,
+            num_agents=3,
+        )
+        ll = ["j", "k", "l"]
+        for i, pos in enumerate(agent_positions):
+            new_agent = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
+            new_agent.move_to(pos)
+            other_agents.add(new_agent)
+            agent_label = (
+                MathTex(rf"{ll[i]}", color=WHITE).scale(0.7).move_to(pos + UP * 0.1)
+            )
+            # agent_label.shift(UP * 0.8)
+            other_agents_labels.add(agent_label)
+
+        self.play(Create(other_agents), run_time=1)
+        self.play(Create(other_agents_labels), run_time=1)
+        self.wait(1)
+
+        # 5. Dashed arrows from other agents to the first agent
+        dashed_lines = VGroup()
+        arrow_others = VGroup()
+        end_point_others = []
+        for agent in other_agents:
+            dashed_line = DashedLine(
+                start=agent.get_center(),
+                end=agent_circle.get_center(),
+                color=GREEN,
+                stroke_width=2,
+            )
+            dashed_lines.add(dashed_line)
+            direction = agent_circle.get_center() - agent.get_center()
+            s = np.linalg.norm(direction)
+            direction_norm = direction / s
+            length = A * np.exp((1 - s) / D)
+            print(f"{length = }, {s = }")
+            end_point = agent.get_center() + length * direction_norm
+            end_point_others.append(end_point)
+            o_arrow = Line(
+                start=agent.get_center(),
+                end=end_point,
+                color=YELLOW,
+                stroke_width=2.2,
+                buff=0.1,
+            )
+            o_arrow.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+            arrow_others.add(o_arrow)
+            dashed_lines.add(dashed_line)
+
+        self.play(Create(dashed_lines), run_time=1)
+        self.play(Create(arrow_others), run_time=1)
+        self.wait(1)
+
+        # 6. Equation appears
+        equation = (
+            MathTex(
+                r"\overrightarrow{e_i} = \frac{1}{N}(\overrightarrow{e_0} + \sum_{j} R(s_{i,j}))"
+            )
+            .scale(0.8)
+            .next_to(agent_circle, UP, buff=2)
+        )
+
+        self.play(Write(equation), run_time=2)
+        self.wait(1)
+        # 7. Lines and equation disappear
+        self.play(FadeOut(dashed_lines), FadeOut(equation), run_time=1)
+        # 8. Change the direction of the pedestrian
+        ####
+        e0 = agent_circle.get_center() + direction_to_exit
+        vector_sum = (
+            e0 - agent_circle.get_center()
+        )  # Start with e0 relative to the agent's center
+        for end_point in end_point_others:
+            vector_sum += end_point - agent_circle.get_center()
+
+        normalized_new_line = vector_sum / np.linalg.norm(vector_sum)
+        new_end_point = agent_circle.get_center() + normalized_new_line
+        new_line = Line(
+            start=agent_circle.get_center(),
+            end=new_end_point,
+            color=RED,
+            stroke_width=2.2,
+        )
+        new_line.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        ####
+        e_label = MathTex(r"\overrightarrow{e}", color=WHITE).scale(0.7)
+        e_label.shift(DOWN * 0.7 + RIGHT * 4.0)
+        self.play(ReplacementTransform(arrow_to_exit, new_line), run_time=1)
+
+        self.wait(1)
+
     def visualize_agent_diameter(self, axes):
         """Visualize the agent diameter as a circle and animate it."""
         circle_radius = 1  # Assuming l = 1 diameter
@@ -183,32 +383,36 @@ class ChangingTAndV0(Scene):
             .set_color(WHITE),
         )
 
-    def construct(self):
-        axes = setup_axes()
-        # Initial values
-        T = ValueTracker(1)
-        v0 = ValueTracker(1)
-        axes = setup_axes()
-        self.visualize_agent_diameter(axes)
+    def setup_visualization_components(self):
+        """Set up all visualization components with configurable creation."""
+        components = {}
 
-        # 1 Show circle and explain l. l then moves to the axis.
-        # 2 Show equation.
-        # 3. plot the graph of the equation including the dashed line and the angles.
-        # 4 start with changing T and then v.
-        # 5 fadeout all elements
-        # TODO reduce the size of the function control.
-        # TODO refactor function show equation
-        # TODO refactor function visualize T
-        # TODO refactor function visualize v0
-        # fadeout all elements in one function. Use *args or something so that the arguments are not explicit.
-        # some functions have dependencies. for example vis T and vis v0. entangle them.
-        # --------------
-        # Precise piecewise function with strict range
+        # Axes setup
+        components["axes"] = setup_axes()
+
+        # Velocity equation
+        components["velocity_eq"] = (
+            MathTex(
+                r"v(s) = \begin{cases} "
+                + r"0 & 0 \leq s \leq l \\"
+                + r"\min\left(\frac{s-l}{T}, v_0\right) & l < s \leq l + v_0T \\"
+                + r"v_0 & s >  l + v_0T"
+                + r"\end{cases}"
+            )
+            .to_corner(UP + RIGHT)
+            .scale(0.7)
+        )
+
+        # Value trackers
+        components["T"] = ValueTracker(1)
+        components["v0"] = ValueTracker(1)
+
+        # Graph function
         def graph_func(s):
             if s > 6:
                 return 0
-            current_T = T.get_value()
-            current_v0 = v0.get_value()
+            current_T = components["T"].get_value()
+            current_v0 = components["v0"].get_value()
             if s <= 1:
                 return 0
             elif 1 < s <= 1 + current_T * current_v0:
@@ -216,31 +420,96 @@ class ChangingTAndV0(Scene):
             else:
                 return current_v0
 
-        graph = always_redraw(
-            lambda: axes.plot(
+        components["graph"] = always_redraw(
+            lambda: components["axes"].plot(
                 graph_func, x_range=[0, 6], use_smoothing=False, color=BLUE
             )
         )
-        # Angle visualization
-        filled_angle = always_redraw(
+
+        # Parameter text and explanation
+        components["t_text"] = always_redraw(
+            lambda: MathTex(
+                rf"T = {components['T'].get_value():.1f}\; [s]",
+                font_size=24,
+                color=RED if components["T"].get_value() != 1 else WHITE,
+            ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
+        )
+
+        components["v0_text"] = always_redraw(
+            lambda: MathTex(
+                rf"v_0 = {components['v0'].get_value():.1f}\; [m/s]",
+                font_size=24,
+                color=RED if components["v0"].get_value() != 1 else WHITE,
+            ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
+        )
+
+        components["explanation_text_T"] = always_redraw(
+            lambda: Text(
+                get_T_behavior_text(
+                    components["T"].get_value(), Tmin=min(T_values), Tmax=max(T_values)
+                ),
+                font_size=20,
+                font="Fira Code Symbol",
+                color=YELLOW,
+            ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
+        )
+
+        components["explanation_text_v0"] = always_redraw(
+            lambda: Text(
+                get_V0_behavior_text(
+                    components["v0"].get_value(),
+                    vmin=min(v0_values),
+                    vmax=max(v0_values),
+                ),
+                font_size=20,
+                font="Fira Code Symbol",
+                color=YELLOW,
+            ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
+        )
+
+        # Dashed line and angle visualization
+        components["dashed_line"] = always_redraw(
+            lambda: DashedLine(
+                start=components["axes"].c2p(
+                    1 + components["v0"].get_value() * components["T"].get_value(),
+                    components["v0"].get_value(),
+                ),
+                end=components["axes"].c2p(
+                    1 + components["v0"].get_value() * components["T"].get_value(),
+                    graph_func(1),
+                ),
+                dash_length=0.1,
+                color=BLUE,
+            )
+        )
+
+        components["filled_angle"] = always_redraw(
             lambda: Sector(
-                arc_center=axes.c2p(1, 0),
+                arc_center=components["axes"].c2p(1, 0),
                 inner_radius=0,
                 outer_radius=0.5,
-                angle=np.arctan((v0.get_value()) / (T.get_value() * v0.get_value())),
+                angle=np.arctan(
+                    (components["v0"].get_value())
+                    / (components["T"].get_value() * components["v0"].get_value())
+                ),
                 start_angle=0,
                 color=BLUE,
                 fill_opacity=0.5,
             )
         )
-        angle = always_redraw(
+
+        components["angle"] = always_redraw(
             lambda: Angle(
                 Line(
-                    start=axes.c2p(1, 0), end=axes.c2p(1 + T.get_value(), 0)
+                    start=components["axes"].c2p(1, 0),
+                    end=components["axes"].c2p(1 + components["T"].get_value(), 0),
                 ),  # Dynamic base line
                 Line(
-                    start=axes.c2p(1, 0),
-                    end=axes.c2p(1 + T.get_value() * v0.get_value(), v0.get_value()),
+                    start=components["axes"].c2p(1, 0),
+                    end=components["axes"].c2p(
+                        1 + components["T"].get_value() * components["v0"].get_value(),
+                        components["v0"].get_value(),
+                    ),
                 ),  # Dynamic incline line
                 radius=0.5,
                 other_angle=False,
@@ -248,129 +517,101 @@ class ChangingTAndV0(Scene):
                 dot=True,
             )
         )
-        dot = always_redraw(lambda: Dot(axes.c2p(1, 0), color=WHITE))
 
-        # Create T and v0 value texts
-        t_text = always_redraw(
-            lambda: MathTex(
-                rf"T = {T.get_value():.1f}\; [s]",
-                font_size=24,
-                color=RED if T.get_value() != 1 else WHITE,
-            ).next_to(velocity_eq, DOWN, aligned_edge=LEFT, buff=0.8)
-        )
-        v0_text = always_redraw(
-            lambda: MathTex(
-                rf"v_0 = {v0.get_value():.1f}\; [m/s]",
-                font_size=24,
-                color=RED if v0.get_value() != 1 else WHITE,
-            ).next_to(velocity_eq, DOWN, aligned_edge=LEFT, buff=0.8)
-        )
+        return components
 
-        # Add elements to the scene
-        self.add(axes, velocity_eq)
-        # Show equation and parameter texts
-        self.play(Write(velocity_eq))
+    def animate_parameter_changes(self, components, parameter="T"):
+        """Generic method to animate parameter changes"""
+        values = T_values if parameter == "T" else v0_values
+        tracker = components[parameter]
 
-        # Animate changing T with smooth color transitions
-        t_framebox = SurroundingRectangle(velocity_eq[0][24:25], buff=0.08, color=RED)
-        t_in_equation = velocity_eq[0][24:25]
-        moving_t = MathTex(r"T", font_size=24).move_to(t_in_equation.get_center())
-        self.play(FocusOn(t_in_equation))
-        self.play(Create(t_framebox))
-        self.play(
-            t_in_equation.animate.set_color(YELLOW),  # Highlight the T in equation
-            moving_t.animate.move_to(t_text[0][0].get_center()),
-            run_time=1,
-        )
-        self.play(Write(t_text))
-        # Start graph animation
-        self.play(Create(graph))
-        explanation_text_T = always_redraw(
-            lambda: Text(
-                get_T_behavior_text(
-                    T.get_value(), Tmin=min(T_values), Tmax=max(T_values)
-                ),
-                font_size=20,
-                font="Fira Code Symbol",
-                color=YELLOW,
-            ).next_to(t_text, DOWN, aligned_edge=LEFT, buff=0.2)
-        )
-        explanation_text_v0 = always_redraw(
-            lambda: Text(
-                get_V0_behavior_text(
-                    v0.get_value(), vmin=min(v0_values), vmax=max(v0_values)
-                ),
-                font_size=20,
-                font="Fira Code Symbol",
-                color=YELLOW,
-            ).next_to(t_text, DOWN, aligned_edge=LEFT, buff=0.2)
-        )
-        dashed_line = always_redraw(
-            lambda: DashedLine(
-                start=axes.c2p(1 + v0.get_value() * T.get_value(), v0.get_value()),
-                end=axes.c2p(
-                    1 + v0.get_value() * T.get_value(), graph_func(1)
-                ),  # End at (4, graph_func(4))
-                dash_length=0.1,  # Adjust dash length
-                color=BLUE,
+        # Highlight parameter in equation
+        if parameter == "T":
+            t_framebox = SurroundingRectangle(
+                components["velocity_eq"][0][24:25], buff=0.08, color=RED
             )
-        )
+            t_in_equation = components["velocity_eq"][0][24:25]
+            moving_t = MathTex(r"T", font_size=24).move_to(t_in_equation.get_center())
 
-        # Add the dashed line to the scene
-        self.play(Create(dashed_line))
-        self.play(Create(filled_angle))
-        self.play(Create(angle))
-        self.add(explanation_text_T, explanation_text_v0)
-        for target_T in T_values:
+            self.play(FocusOn(t_in_equation))
+            self.play(Create(t_framebox))
             self.play(
-                T.animate.set_value(target_T).set_color(RED),
+                t_in_equation.animate.set_color(YELLOW),
+                moving_t.animate.move_to(components["t_text"][0][0].get_center()),
+                run_time=1,
+            )
+            self.play(Write(components["t_text"]))
+            self.add(components["explanation_text_T"])
+        else:
+            v0_framebox = SurroundingRectangle(
+                components["velocity_eq"][0][38:40], buff=0.15, color=RED
+            )
+            v0_in_equation = components["velocity_eq"][0][38:40]
+            moving_v0 = MathTex(r"v_0", font_size=24).move_to(
+                v0_in_equation.get_center()
+            )
+
+            self.play(FocusOn(v0_in_equation))
+            self.play(Create(v0_framebox))
+            self.play(
+                v0_in_equation.animate.set_color(YELLOW),
+                moving_v0.animate.move_to(components["v0_text"][0][0:2].get_center()),
+                run_time=1,
+            )
+            self.play(Write(components["v0_text"]))
+            self.add(components["explanation_text_v0"])
+        # Animate parameter changes
+        for target_value in values:
+            self.play(
+                tracker.animate.set_value(target_value).set_color(RED),
                 run_time=0.1,
                 rate_func=smooth,
             )
-            if target_T == min(T_values) or target_T == max(T_values):
+            if target_value in (min(values), max(values)):
                 self.wait(5)
 
-        # ================================ v0 ==================
-        self.play(FadeOut(t_text), FadeOut(explanation_text_T), FadeOut(moving_t))
-        self.play(t_in_equation.animate.set_color(WHITE))
-        v0_framebox = SurroundingRectangle(velocity_eq[0][38:40], buff=0.15, color=RED)
-        v0_in_equation = velocity_eq[0][38:40]
-        moving_v0 = MathTex(r"v_0", font_size=24).move_to(v0_in_equation.get_center())
-        self.play(FocusOn(v0_in_equation))
-        self.play(ReplacementTransform(t_framebox, v0_framebox))
-        # Transition to v0
-        self.play(
-            v0_in_equation.animate.set_color(YELLOW),  # Highlight the v0 in equation
-            moving_v0.animate.move_to(v0_text[0][0:2].get_center()),
-            run_time=1,
-        )
+        self.play(tracker.animate.set_color(WHITE))
+        # Return keys of components to fade out
+        if parameter == "T":
+            self.play(FadeOut(moving_t, t_framebox))
+            return ["explanation_text_T", "t_text"]
+        else:
+            self.play(FadeOut(moving_v0, v0_framebox))
+            return ["explanation_text_v0", "v0_text"]
 
-        self.play(Write(v0_text))  # Add v0 text
-        self.play(FadeOut(moving_v0), v0_in_equation.animate.set_color(WHITE))
+    def construct(self):
+        # Modular setup with stage control
+        components = self.setup_visualization_components()
+        if self.config["agentExit"]:
+            self.AgentExitVisualization(A=3.5, D=1)
+        if self.config["show_agent_diameter"]:
+            self.visualize_agent_diameter(components["axes"])
 
-        # Animate changing v0
-        for target_v0 in v0_values:
-            self.play(
-                v0.animate.set_value(target_v0).set_color(RED),
-                run_time=0.1,
-                rate_func=smooth,
-            )
-            if target_v0 == min(v0_values) or target_v0 == max(v0_values):
-                self.wait(5)
+        if self.config["show_equation"]:
+            self.add(components["axes"], components["velocity_eq"])
+            self.play(Write(components["velocity_eq"]))
+            self.play(Create(components["graph"]))
+            self.play(Create(components["dashed_line"]))
+            self.play(Create(components["filled_angle"]))
+            self.play(Create(components["angle"]))
 
-        # Reset v0 color and hold
-        self.play(v0.animate.set_color(WHITE))
-        self.wait(1)
+        if self.config["animate_t_parameter"]:
+            fadeouts = self.animate_parameter_changes(components, "T")
+            for fo in fadeouts:
+                self.play(FadeOut(components[fo]))
+
+        if self.config["animate_v0_parameter"]:
+            fadeouts = self.animate_parameter_changes(components, "v0")
+            for fo in fadeouts:
+                self.play(FadeOut(components[fo]))
 
         # Fade out scene elements
         self.play(
-            FadeOut(axes),
-            FadeOut(graph),
-            FadeOut(velocity_eq),
-            FadeOut(v0_text),
-            FadeOut(t_framebox),
-            FadeOut(v0_framebox),
-            FadeOut(dashed_line),
-            FadeOut(angle),
-            FadeOut(filled_angle),
+            FadeOut(components["axes"]),
+            FadeOut(components["graph"]),
+            FadeOut(components["velocity_eq"]),
+            FadeOut(components["v0_text"]),
+            FadeOut(components["dashed_line"]),
+            FadeOut(components["angle"]),
+            FadeOut(components["filled_angle"]),
         )
