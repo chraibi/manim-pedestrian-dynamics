@@ -6,6 +6,19 @@ Run with: manim -pqh change_v0_T.py
 from manim import *
 import numpy as np
 
+
+from dataclasses import dataclass
+
+
+@dataclass
+class VisualizationConfig:
+    agent_exit: bool = True
+    show_agent_diameter: bool = False
+    show_equation: bool = False
+    animate_t_parameter: bool = False
+    animate_v0_parameter: bool = False
+
+
 # Velocity equation parameters
 T_values = [
     1,
@@ -197,16 +210,11 @@ def get_new_line(line):
 
 
 class ChangingTAndV0(Scene):
-    def __init__(self, *args, **kwargs):
+    def __init__(
+        self, *args, config: VisualizationConfig = VisualizationConfig(), **kwargs
+    ):
         super().__init__(*args, **kwargs)
-        # Configuration flags to control visualization stages
-        self.config = {
-            "agentExit": True,
-            "show_agent_diameter": False,
-            "show_equation": False,
-            "animate_t_parameter": False,
-            "animate_v0_parameter": False,
-        }
+        self.config = config
 
     def AgentExitVisualization(self, A=1, D=1):
         # 1. Agent appears
@@ -390,133 +398,138 @@ class ChangingTAndV0(Scene):
         # Axes setup
         components["axes"] = setup_axes()
 
-        # Velocity equation
-        components["velocity_eq"] = (
-            MathTex(
-                r"v(s) = \begin{cases} "
-                + r"0 & 0 \leq s \leq l \\"
-                + r"\min\left(\frac{s-l}{T}, v_0\right) & l < s \leq l + v_0T \\"
-                + r"v_0 & s >  l + v_0T"
-                + r"\end{cases}"
+        if self.config.show_equation:
+            # Velocity equation
+            components["velocity_eq"] = (
+                MathTex(
+                    r"v(s) = \begin{cases} "
+                    + r"0 & 0 \leq s \leq l \\"
+                    + r"\min\left(\frac{s-l}{T}, v_0\right) & l < s \leq l + v_0T \\"
+                    + r"v_0 & s >  l + v_0T"
+                    + r"\end{cases}"
+                )
+                .to_corner(UP + RIGHT)
+                .scale(0.7)
             )
-            .to_corner(UP + RIGHT)
-            .scale(0.7)
-        )
 
-        # Value trackers
-        components["T"] = ValueTracker(1)
-        components["v0"] = ValueTracker(1)
+            # Value trackers
+            components["T"] = ValueTracker(1)
+            components["v0"] = ValueTracker(1)
 
-        # Graph function
-        def graph_func(s):
-            if s > 6:
-                return 0
-            current_T = components["T"].get_value()
-            current_v0 = components["v0"].get_value()
-            if s <= 1:
-                return 0
-            elif 1 < s <= 1 + current_T * current_v0:
-                return min(current_v0, (s - 1) / current_T)
-            else:
-                return current_v0
+            # Graph function
+            def graph_func(s):
+                if s > 6:
+                    return 0
+                current_T = components["T"].get_value()
+                current_v0 = components["v0"].get_value()
+                if s <= 1:
+                    return 0
+                elif 1 < s <= 1 + current_T * current_v0:
+                    return min(current_v0, (s - 1) / current_T)
+                else:
+                    return current_v0
 
-        components["graph"] = always_redraw(
-            lambda: components["axes"].plot(
-                graph_func, x_range=[0, 6], use_smoothing=False, color=BLUE
+            components["graph"] = always_redraw(
+                lambda: components["axes"].plot(
+                    graph_func, x_range=[0, 6], use_smoothing=False, color=BLUE
+                )
             )
-        )
 
-        # Parameter text and explanation
-        components["t_text"] = always_redraw(
-            lambda: MathTex(
-                rf"T = {components['T'].get_value():.1f}\; [s]",
-                font_size=24,
-                color=RED if components["T"].get_value() != 1 else WHITE,
-            ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
-        )
-
-        components["v0_text"] = always_redraw(
-            lambda: MathTex(
-                rf"v_0 = {components['v0'].get_value():.1f}\; [m/s]",
-                font_size=24,
-                color=RED if components["v0"].get_value() != 1 else WHITE,
-            ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
-        )
-
-        components["explanation_text_T"] = always_redraw(
-            lambda: Text(
-                get_T_behavior_text(
-                    components["T"].get_value(), Tmin=min(T_values), Tmax=max(T_values)
-                ),
-                font_size=20,
-                font="Fira Code Symbol",
-                color=YELLOW,
-            ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
-        )
-
-        components["explanation_text_v0"] = always_redraw(
-            lambda: Text(
-                get_V0_behavior_text(
-                    components["v0"].get_value(),
-                    vmin=min(v0_values),
-                    vmax=max(v0_values),
-                ),
-                font_size=20,
-                font="Fira Code Symbol",
-                color=YELLOW,
-            ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
-        )
-
-        # Dashed line and angle visualization
-        components["dashed_line"] = always_redraw(
-            lambda: DashedLine(
-                start=components["axes"].c2p(
-                    1 + components["v0"].get_value() * components["T"].get_value(),
-                    components["v0"].get_value(),
-                ),
-                end=components["axes"].c2p(
-                    1 + components["v0"].get_value() * components["T"].get_value(),
-                    graph_func(1),
-                ),
-                dash_length=0.1,
-                color=BLUE,
+            # Parameter text and explanation
+            components["t_text"] = always_redraw(
+                lambda: MathTex(
+                    rf"T = {components['T'].get_value():.1f}\; [s]",
+                    font_size=24,
+                    color=RED if components["T"].get_value() != 1 else WHITE,
+                ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
             )
-        )
 
-        components["filled_angle"] = always_redraw(
-            lambda: Sector(
-                arc_center=components["axes"].c2p(1, 0),
-                inner_radius=0,
-                outer_radius=0.5,
-                angle=np.arctan(
-                    (components["v0"].get_value())
-                    / (components["T"].get_value() * components["v0"].get_value())
-                ),
-                start_angle=0,
-                color=BLUE,
-                fill_opacity=0.5,
+            components["v0_text"] = always_redraw(
+                lambda: MathTex(
+                    rf"v_0 = {components['v0'].get_value():.1f}\; [m/s]",
+                    font_size=24,
+                    color=RED if components["v0"].get_value() != 1 else WHITE,
+                ).next_to(components["velocity_eq"], DOWN, aligned_edge=LEFT, buff=0.8)
             )
-        )
 
-        components["angle"] = always_redraw(
-            lambda: Angle(
-                Line(
-                    start=components["axes"].c2p(1, 0),
-                    end=components["axes"].c2p(1 + components["T"].get_value(), 0),
-                ),  # Dynamic base line
-                Line(
-                    start=components["axes"].c2p(1, 0),
-                    end=components["axes"].c2p(
-                        1 + components["T"].get_value() * components["v0"].get_value(),
+            components["explanation_text_T"] = always_redraw(
+                lambda: Text(
+                    get_T_behavior_text(
+                        components["T"].get_value(),
+                        Tmin=min(T_values),
+                        Tmax=max(T_values),
+                    ),
+                    font_size=20,
+                    font="Fira Code Symbol",
+                    color=YELLOW,
+                ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
+            )
+
+            components["explanation_text_v0"] = always_redraw(
+                lambda: Text(
+                    get_V0_behavior_text(
+                        components["v0"].get_value(),
+                        vmin=min(v0_values),
+                        vmax=max(v0_values),
+                    ),
+                    font_size=20,
+                    font="Fira Code Symbol",
+                    color=YELLOW,
+                ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
+            )
+
+            # Dashed line and angle visualization
+            components["dashed_line"] = always_redraw(
+                lambda: DashedLine(
+                    start=components["axes"].c2p(
+                        1 + components["v0"].get_value() * components["T"].get_value(),
                         components["v0"].get_value(),
                     ),
-                ),  # Dynamic incline line
-                radius=0.5,
-                other_angle=False,
-                color=ORANGE,
-                dot=True,
+                    end=components["axes"].c2p(
+                        1 + components["v0"].get_value() * components["T"].get_value(),
+                        graph_func(1),
+                    ),
+                    dash_length=0.1,
+                    color=BLUE,
+                )
             )
-        )
+
+            components["filled_angle"] = always_redraw(
+                lambda: Sector(
+                    arc_center=components["axes"].c2p(1, 0),
+                    inner_radius=0,
+                    outer_radius=0.5,
+                    angle=np.arctan(
+                        (components["v0"].get_value())
+                        / (components["T"].get_value() * components["v0"].get_value())
+                    ),
+                    start_angle=0,
+                    color=BLUE,
+                    fill_opacity=0.5,
+                )
+            )
+
+            components["angle"] = always_redraw(
+                lambda: Angle(
+                    Line(
+                        start=components["axes"].c2p(1, 0),
+                        end=components["axes"].c2p(1 + components["T"].get_value(), 0),
+                    ),  # Dynamic base line
+                    Line(
+                        start=components["axes"].c2p(1, 0),
+                        end=components["axes"].c2p(
+                            1
+                            + components["T"].get_value()
+                            * components["v0"].get_value(),
+                            components["v0"].get_value(),
+                        ),
+                    ),  # Dynamic incline line
+                    radius=0.5,
+                    other_angle=False,
+                    color=ORANGE,
+                    dot=True,
+                )
+            )
 
         return components
 
@@ -582,12 +595,12 @@ class ChangingTAndV0(Scene):
     def construct(self):
         # Modular setup with stage control
         components = self.setup_visualization_components()
-        if self.config["agentExit"]:
+        if self.config.agent_exit:
             self.AgentExitVisualization(A=3.5, D=1)
-        if self.config["show_agent_diameter"]:
+        if self.config.show_agent_diameter:
             self.visualize_agent_diameter(components["axes"])
 
-        if self.config["show_equation"]:
+        if self.config.show_equation:
             self.add(components["axes"], components["velocity_eq"])
             self.play(Write(components["velocity_eq"]))
             self.play(Create(components["graph"]))
@@ -595,23 +608,30 @@ class ChangingTAndV0(Scene):
             self.play(Create(components["filled_angle"]))
             self.play(Create(components["angle"]))
 
-        if self.config["animate_t_parameter"]:
+        if self.config.animate_t_parameter:
             fadeouts = self.animate_parameter_changes(components, "T")
             for fo in fadeouts:
                 self.play(FadeOut(components[fo]))
 
-        if self.config["animate_v0_parameter"]:
+        if self.config.animate_v0_parameter:
             fadeouts = self.animate_parameter_changes(components, "v0")
             for fo in fadeouts:
                 self.play(FadeOut(components[fo]))
 
         # Fade out scene elements
-        self.play(
-            FadeOut(components["axes"]),
-            FadeOut(components["graph"]),
-            FadeOut(components["velocity_eq"]),
-            FadeOut(components["v0_text"]),
-            FadeOut(components["dashed_line"]),
-            FadeOut(components["angle"]),
-            FadeOut(components["filled_angle"]),
-        )
+        if any(
+            [
+                self.config.show_equation,
+                self.config.animate_t_parameter,
+                self.config.animate_v0_parameter,
+            ]
+        ):
+            self.play(
+                FadeOut(components["axes"]),
+                FadeOut(components["graph"]),
+                FadeOut(components["velocity_eq"]),
+                FadeOut(components["v0_text"]),
+                FadeOut(components["dashed_line"]),
+                FadeOut(components["angle"]),
+                FadeOut(components["filled_angle"]),
+            )
