@@ -12,7 +12,8 @@ from dataclasses import dataclass
 
 @dataclass
 class VisualizationConfig:
-    agent_exit: bool = True
+    intro: bool = True
+    agent_exit: bool = False
     show_agent_diameter: bool = False
     show_equation: bool = False
     animate_t_parameter: bool = False
@@ -285,6 +286,90 @@ class ChangingTAndV0(Scene):
         self.wait(2)
         # self.play(FadeOut(t3))
         return final_equation, underbracket, underbracket_label, t1
+
+    def ShowIntro(self):
+        title = Text("The collision-free speed model", font_size=50).shift(UP * 2)
+        text = MarkupText(
+            """
+            The collision-free speed model<sup>1</sup> is a mathematical approach
+            designed for pedestrian dynamics, emphasizing the prevention
+            of collisions among agents.
+            """,
+            font="Fira Code",
+            font_size=24,
+        )
+        text2 = Text(
+            r"""
+            The collision-free speed model is mathematically represented
+            as a derivative equation for the velocity of each pedestrian.
+            
+            Typically, this can be expressed as
+            """,
+            font="Fira Code",
+            font_size=24,
+        )
+        eq = (
+            MathTex(
+                r"\dot{x}_i = ",
+                r"V_i(s_i)",
+                r"\times",
+                r"e_i(x_i, x_j, \cdots)",
+                font_size=40,
+            )
+            .set_color_by_tex_to_color_map(
+                {
+                    "V_i": RED,  # Set the speed function in red
+                    "e_i": BLUE,  # Set the direction function in blue
+                }
+            )
+            .next_to(text2, DOWN * 1.5)
+        )
+        text3 = Text(
+            """
+            The speed function regulates the overall speed of the agent,
+            """,
+            font="Fira Code",
+            font_size=24,
+            t2c={"speed function": RED},
+        )
+        text4 = Text(
+            """
+            while the direction function determines the direction
+            in which the agent moves.
+            """,
+            font="Fira Code",
+            font_size=24,
+            t2c={"direction function": BLUE},
+        )
+
+        ref = MarkupText(
+            """
+             <sup>1</sup> Tordeux, A., Chraibi, M., Seyfried, A. (2016).
+            Collision-Free Speed Model for Pedestrian Dynamics.
+            In: Knoop, V., Daamen, W. (eds) Traffic and Granular Flow ‘15.
+            https://doi.org/10.1007/978-3-319-33482-0_29
+            """,
+            font_size=18,
+            font="Fira Code",
+            color="Gray",
+        ).next_to(text, DOWN, buff=2)
+        self.play(FadeIn(title))
+        self.play(FadeIn(text))
+        self.play(FadeIn(ref))
+        self.wait(4)
+        self.play(FadeOut(ref))
+
+        self.wait(2)
+        self.play(Transform(text, text2), FadeIn(eq))
+        self.wait(2)
+        self.play(Transform(text, text3))
+        self.play(Circumscribe(eq[1]), color=RED, run_time=2)
+        self.wait(2)
+        self.play(Transform(text, text4))
+        self.play(Circumscribe(eq[3]), shape=Circle, color=BLUE, run_time=2)
+        self.wait(3)
+        self.play(FadeOut(*self.mobjects))
+        self.wait(3)
 
     def AgentExitVisualization(self, components):
         A_tracker = components["A"]
@@ -835,6 +920,8 @@ class ChangingTAndV0(Scene):
     def construct(self):
         # Modular setup with stage control
         components = self.setup_visualization_components()
+        if self.config.intro:
+            self.ShowIntro()
         if self.config.agent_exit:
             self.AgentExitVisualization(components)
         if self.config.show_agent_diameter:
