@@ -245,6 +245,7 @@ class ChangingTAndV0(Scene):
 
         self.play(FadeIn(initial_equation[0]), run_time=0.5)
         self.play(FadeIn(t1), run_time=0.1)
+
         self.wait(2)
         self.play(FadeIn(initial_equation[1]), run_time=0.5)
         # self.play(t1.animate.set_opacity(0), t2.animate.set_opacity(1), run_time=1)
@@ -271,24 +272,24 @@ class ChangingTAndV0(Scene):
         )
 
         # Final transformation
-        self.play(
-            FadeOut(t1, t2, run_time=0.1),
-        )
+        #        self.play(
+        #            FadeOut(t1, t2, run_time=0.1),
+        #        )
         self.play(
             FadeOut(initial_equation, run_time=0.1),
             # Fade out original elements
             # Transform 1/N to final equation
-            FadeIn(t3),
+            Transform(t1, t3),
             TransformMatchingShapes(n_fraction, final_equation, run_time=1),
         )
         self.wait(2)
         # self.play(FadeOut(t3))
-        return final_equation, underbracket, underbracket_label, t3
+        return final_equation, underbracket, underbracket_label, t1
 
     def AgentExitVisualization(self, components):
         A_tracker = components["A"]
         D_tracker = components["D"]
-
+        fs = 32  # font size
         # 1. Agent appears
         agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
         agent_label = (
@@ -296,9 +297,32 @@ class ChangingTAndV0(Scene):
             .scale(0.7)
             .move_to(agent_circle.get_center() + LEFT * 0.1)
         )
+        text = Text("The direction function", font="Fira Code", font_size=40)
+        difference = Text(
+            """
+            The direction function defines the direction in which an agent moves.
+            It is computed as a superposition of the desired direction towards a goal
+            and the influence of neighboring agents.
+            """,
+            font_size=20,
+            font="Inconsolata-dz for Powerline",
+            t2c={
+                "direction function": BLUE,
+                "desired direction": ORANGE,
+                "neighboring agents": ORANGE,
+            },
+        )
+        intro_text = (
+            VGroup(text, difference)
+            .arrange(DOWN, buff=1)
+            .next_to(agent_circle, UP, buff=1)
+        )
+        self.play(FadeIn(intro_text))
+        self.wait(5)
+        self.play(FadeOut(intro_text))
         self.play(GrowFromCenter(agent_circle), Create(agent_label))
         # 2. Exit icon appears
-        exit_icon = ImageMobject("exit.png").scale(1)
+        exit_icon = ImageMobject("exit.png").scale(0.5)
         exit_icon.scale(0.3).next_to(agent_circle, RIGHT, buff=4.5)
         self.play(FadeIn(exit_icon), run_time=1)
         self.wait(1)
@@ -350,7 +374,6 @@ class ChangingTAndV0(Scene):
         self.play(Create(other_agents), run_time=1)
         self.play(Create(other_agents_labels), run_time=1)
         self.wait(1)
-        fs = 32  # font size
         equation = (
             Tex(
                 r"$\overrightarrow{e_i} = \overrightarrow{e_0}$",
