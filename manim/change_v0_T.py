@@ -320,6 +320,7 @@ class ChangingTAndV0(Scene):
                 {
                     "V_i": RED,  # Set the speed function in red
                     "e_i": BLUE,  # Set the direction function in blue
+                    "\\dot{x}_i": YELLOW,
                 }
             )
             .next_to(text2, DOWN * 1.5)
@@ -330,7 +331,7 @@ class ChangingTAndV0(Scene):
             """,
             font="Fira Code",
             font_size=24,
-            t2c={"speed function": RED},
+            t2c={"speed function": RED, "overall speed": YELLOW},
         )
         text4 = Text(
             """
@@ -353,6 +354,8 @@ class ChangingTAndV0(Scene):
             font="Fira Code",
             color="Gray",
         ).next_to(text, DOWN, buff=2)
+        speed_index = 3
+        direction_index = 10
         self.play(FadeIn(title))
         self.play(FadeIn(text))
         self.play(FadeIn(ref))
@@ -363,10 +366,25 @@ class ChangingTAndV0(Scene):
         self.play(Transform(text, text2), FadeIn(eq))
         self.wait(2)
         self.play(Transform(text, text3))
-        self.play(Circumscribe(eq[1]), color=RED, run_time=2)
+        self.play(
+            Circumscribe(
+                eq[1],
+                color=RED,
+            ),
+            Wiggle(text3[speed_index:16], color=WHITE),
+            run_time=2,
+        )
+
         self.wait(2)
-        self.play(Transform(text, text4))
-        self.play(Circumscribe(eq[3]), shape=Circle, color=BLUE, run_time=2)
+        self.play(Transform(text, text4), FadeOut(text3))
+        self.play(
+            Circumscribe(
+                eq[3],
+                color=BLUE,
+            ),
+            Wiggle(text4[direction_index:25]),
+            run_time=2,
+        )
         self.wait(3)
         self.play(FadeOut(*self.mobjects))
         self.wait(3)
