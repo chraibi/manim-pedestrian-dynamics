@@ -95,15 +95,15 @@ v0_values = [
 ]
 
 
-def setup_axes():
+def setup_axes(x=10, y=4, xlabel="s [m]", ylabel="v [m/s]"):
     """Set up the axes and add to the scene."""
     axes = Axes(
-        x_range=[0, 10, 1],
-        y_range=[0, 4, 1],
+        x_range=[0, x, 1],
+        y_range=[0, y, 1],
         axis_config={"tip_shape": StealthTip},
     )
-    x_label = axes.get_x_axis_label("s [m]")
-    y_label = axes.get_y_axis_label("v [m/s]")
+    x_label = axes.get_x_axis_label(xlabel)
+    y_label = axes.get_y_axis_label(ylabel)
     axes.add(x_label, y_label)
     return axes
 
@@ -177,6 +177,28 @@ def generate_non_overlapping_positions(
     return positions
 
 
+def calculate_new_direction(arrow_others, e0, agent_circle):
+    def redraw():
+        end_point_others = [arrow.get_end() for arrow in arrow_others]
+        vector_sum = e0 - agent_circle.get_center()
+        for end_point in end_point_others:
+            vector_sum += end_point - agent_circle.get_center()
+
+            normalized_new_line = vector_sum / np.linalg.norm(vector_sum)
+            new_end_point = agent_circle.get_center() + normalized_new_line
+            new_line = Line(
+                start=agent_circle.get_center(),
+                end=new_end_point,
+                color=RED,
+                stroke_width=2.2,
+            )
+            new_line.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+
+        return new_line
+
+    return redraw
+
+
 class ChangingTAndV0(Scene):
     def __init__(
         self, *args, config: VisualizationConfig = VisualizationConfig(), **kwargs
@@ -184,7 +206,89 @@ class ChangingTAndV0(Scene):
         super().__init__(*args, **kwargs)
         self.config = config
 
-    def AgentExitVisualization(self, A=1, D=1):
+    def animate_equation(
+        self,
+        initial_equation,
+        final_equation,
+        font_size=32,
+    ):
+        """
+        Animate the transformation of an equation with optional brace and label.
+
+        Parameters:
+        - initial_equation: The starting Tex or MathTex object
+        - final_equation: The final MathTex object to transform into
+        - brace_part: The part of the equation to apply the brace to (optional)
+        - brace_label: The label for the brace (optional)
+        - font_size: Base font size for the animation
+        """
+        # Preserve original positioning
+        original_position = initial_equation.get_center()
+        t1 = Text(
+            r"Initially, each agent follows its own desired path.",
+            font_size=font_size - 4,
+            # tex_template=TexFontTemplates.french_cursive,
+            font="Fira Code Symbol",
+        ).next_to(original_position, UP * 2)
+        t2 = Text(
+            r"Now, agents' directions are collectively shaped by interactions.",
+            font_size=font_size - 4,
+            # tex_template=TexFontTemplates.french_cursive,
+            font="Fira Code Symbol",
+        ).next_to(original_position, UP * 2)
+        t3 = Text(
+            r"Normalizing agent's direction.",
+            font_size=font_size - 4,
+            # tex_template=TexFontTemplates.french_cursive,
+            font="Fira Code Symbol",
+        ).next_to(original_position, UP * 2)
+
+        self.play(FadeIn(initial_equation[0]), run_time=0.5)
+        self.play(FadeIn(t1), run_time=0.1)
+        self.wait(2)
+        self.play(FadeIn(initial_equation[1]), run_time=0.5)
+        # self.play(t1.animate.set_opacity(0), t2.animate.set_opacity(1), run_time=1)
+        self.play(Transform(t1, t2))
+        brace_part = initial_equation[1][1:]
+        underbracket = Brace(brace_part, color=YELLOW)
+        # underbracket.move_to(brace_part.get_center())
+        underbracket_label = MathTex(
+            r"\overrightarrow{e_{ij}}", font_size=font_size
+        ).next_to(underbracket, DOWN)
+        # Animate brace and label
+        self.play(
+            FadeIn(underbracket, run_time=0.5),
+            FadeIn(underbracket_label, shift=DOWN, run_time=1),
+        )
+        self.wait(2)
+
+        # Prepare 1/N fraction for transformation
+        n_fraction = (
+            MathTex(r"\frac{1}{N}", font_size=font_size + 4)
+            .scale(0.8)
+            .next_to(initial_equation)
+            .shift(RIGHT)
+        )
+
+        # Final transformation
+        self.play(
+            FadeOut(t1, t2, run_time=0.1),
+        )
+        self.play(
+            FadeOut(initial_equation, run_time=0.1),
+            # Fade out original elements
+            # Transform 1/N to final equation
+            FadeIn(t3),
+            TransformMatchingShapes(n_fraction, final_equation, run_time=1),
+        )
+        self.wait(2)
+        # self.play(FadeOut(t3))
+        return final_equation, underbracket, underbracket_label, t3
+
+    def AgentExitVisualization(self, components):
+        A_tracker = components["A"]
+        D_tracker = components["D"]
+
         # 1. Agent appears
         agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
         agent_label = (
@@ -194,11 +298,10 @@ class ChangingTAndV0(Scene):
         )
         self.play(GrowFromCenter(agent_circle), Create(agent_label))
         # 2. Exit icon appears
-        exit_icon = Triangle(fill_color=RED, fill_opacity=0.1, stroke_color=RED)
+        exit_icon = ImageMobject("exit.png").scale(1)
         exit_icon.scale(0.3).next_to(agent_circle, RIGHT, buff=4.5)
-        self.play(Create(exit_icon), run_time=1)
+        self.play(FadeIn(exit_icon), run_time=1)
         self.wait(1)
-
         # 3. Directional line (walking direction) appears
         direction = exit_icon.get_center() - agent_circle.get_center()
         direction_to_exit = direction / np.linalg.norm(direction)
@@ -215,12 +318,12 @@ class ChangingTAndV0(Scene):
         )
         arrow_to_exit.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         e0_label = MathTex(r"\overrightarrow{e_0}", color=WHITE).scale(0.7)
-        e0_label.shift(UP * 0.3 + RIGHT * 4.0)
+        e0 = agent_circle.get_center() + direction_to_exit
         self.play(Create(dashed_line), run_time=1)
         self.play(Create(arrow_to_exit), run_time=1)
+        e0_label.next_to(arrow_to_exit, buff=0.0).shift(DOWN * 0.25 + LEFT * 0.3)
         self.play(Create(e0_label), run_time=1)
         self.wait(1)
-
         # 4. Four additional agents appear with randomized positions
         other_agents = VGroup()
         other_agents_labels = VGroup()
@@ -234,38 +337,131 @@ class ChangingTAndV0(Scene):
             min_distance=1.2,
             num_agents=3,
         )
-        ll = ["j", "k", "l"]
+        ll = ["n", "k", "m"]
         for i, pos in enumerate(agent_positions):
             new_agent = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
             new_agent.move_to(pos)
             other_agents.add(new_agent)
-            agent_label = (
+            _agent_label = (
                 MathTex(rf"{ll[i]}", color=WHITE).scale(0.7).move_to(pos + UP * 0.1)
             )
-            # agent_label.shift(UP * 0.8)
-            other_agents_labels.add(agent_label)
+            other_agents_labels.add(_agent_label)
 
         self.play(Create(other_agents), run_time=1)
         self.play(Create(other_agents_labels), run_time=1)
         self.wait(1)
+        fs = 32  # font size
+        equation = (
+            Tex(
+                r"$\overrightarrow{e_i} = \overrightarrow{e_0}$",
+                r"$+ \sum_{j} A\exp(\frac{l-s}{D})$",
+                font_size=fs + 4,
+            )
+            .scale(0.8)
+            .next_to(agent_circle, UP, buff=2)
+        )
+        _final_equation = (
+            MathTex(
+                r"\overrightarrow{e_i} = \frac{1}{N}\Big(\overrightarrow{e_0} + \sum_{j} A\exp(\frac{l-s}{D})\Big)",
+                font_size=fs + 4,
+            )
+            .scale(0.8)
+            .move_to(equation)
+        )
 
+        final_equation, underbracket, underbracket_label, text3 = self.animate_equation(
+            equation,
+            _final_equation,
+            font_size=fs,
+        )
+
+        A_in_equation = final_equation[0][16:17]
+        D_in_equation = final_equation[0][25:26]
+        moving_A = MathTex(r"A", font_size=fs).move_to(A_in_equation.get_center())
+        moving_D = MathTex(r"D", font_size=fs).move_to(D_in_equation.get_center())
+
+        self.play(FocusOn(A_in_equation))
+        self.play(
+            moving_A.animate.next_to(equation, RIGHT, buff=2),
+            run_time=2,
+        )
+        self.play(FocusOn(D_in_equation))
+        self.play(
+            moving_D.animate.next_to(moving_A, DOWN),
+            run_time=2,
+        )
         # 5. Dashed arrows from other agents to the first agent
         dashed_lines = VGroup()
         arrow_others = VGroup()
         end_point_others = []
+        value_text_A = always_redraw(
+            lambda: MathTex(
+                f"={components['A'].get_value():.1f}",
+                color=WHITE,
+                font_size=fs,
+            ).next_to(moving_A)
+        )
+        self.add(value_text_A)
+        value_text_D = always_redraw(
+            lambda: MathTex(
+                f"={components['D'].get_value():.1f}",
+                color=WHITE,
+                font_size=fs,
+            ).next_to(moving_D)
+        )
+        self.add(value_text_D)
+        group = VGroup(moving_A, moving_D, value_text_A, value_text_D)
+        rectangle = SurroundingRectangle(group, color=YELLOW, buff=0.2)
+        rect_label = Text(
+            r"Direction parameters",
+            font_size=fs - 4,
+            # tex_template=TexFontTemplates.french_cursive,
+            font="Fira Code Symbol",
+        ).next_to(rectangle, UP)
+
+        self.play(Create(rectangle), Transform(text3, rect_label))
+
+        arrow_others = always_redraw(
+            lambda: VGroup(
+                *[
+                    Line(
+                        start=agent.get_center(),
+                        end=agent.get_center()
+                        + A_tracker.get_value()
+                        * np.exp(
+                            (
+                                1
+                                - np.linalg.norm(
+                                    agent_circle.get_center() - agent.get_center()
+                                )
+                            )
+                            / D_tracker.get_value()
+                        )
+                        * (agent_circle.get_center() - agent.get_center())
+                        / np.linalg.norm(
+                            agent_circle.get_center() - agent.get_center()
+                        ),
+                        color=YELLOW,
+                        stroke_width=2.2,
+                        buff=0.1,
+                    ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+                    for agent in other_agents
+                ]
+            )
+        )
+
         for agent in other_agents:
-            dashed_line = DashedLine(
+            _dashed_line = DashedLine(
                 start=agent.get_center(),
                 end=agent_circle.get_center(),
                 color=GREEN,
                 stroke_width=2,
             )
-            dashed_lines.add(dashed_line)
+            dashed_lines.add(_dashed_line)
             direction = agent_circle.get_center() - agent.get_center()
             s = np.linalg.norm(direction)
             direction_norm = direction / s
-            length = A * np.exp((1 - s) / D)
-            print(f"{length = }, {s = }")
+            length = A_tracker.get_value() * np.exp((1 - s) / D_tracker.get_value())
             end_point = agent.get_center() + length * direction_norm
             end_point_others.append(end_point)
             o_arrow = Line(
@@ -283,43 +479,92 @@ class ChangingTAndV0(Scene):
         self.play(Create(arrow_others), run_time=1)
         self.wait(1)
 
-        # 6. Equation appears
-        equation = (
-            MathTex(
-                r"\overrightarrow{e_i} = \frac{1}{N}(\overrightarrow{e_0} + \sum_{j} R(s_{i,j}))"
-            )
-            .scale(0.8)
-            .next_to(agent_circle, UP, buff=2)
-        )
-
-        self.play(Write(equation), run_time=2)
-        self.wait(1)
         # 7. Lines and equation disappear
-        self.play(FadeOut(dashed_lines), FadeOut(equation), run_time=1)
+        self.play(FadeOut(dashed_lines), run_time=1)
         # 8. Change the direction of the pedestrian
         ####
-        e0 = agent_circle.get_center() + direction_to_exit
-        vector_sum = (
-            e0 - agent_circle.get_center()
-        )  # Start with e0 relative to the agent's center
-        for end_point in end_point_others:
-            vector_sum += end_point - agent_circle.get_center()
-
-        normalized_new_line = vector_sum / np.linalg.norm(vector_sum)
-        new_end_point = agent_circle.get_center() + normalized_new_line
-        new_line = Line(
-            start=agent_circle.get_center(),
-            end=new_end_point,
-            color=RED,
-            stroke_width=2.2,
+        # Dynamically update the pedestrian's direction
+        new_line = always_redraw(
+            calculate_new_direction(arrow_others, e0, agent_circle)
         )
-        new_line.add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
-        ####
-        e_label = MathTex(r"\overrightarrow{e}", color=WHITE).scale(0.7)
-        e_label.shift(DOWN * 0.7 + RIGHT * 4.0)
-        self.play(ReplacementTransform(arrow_to_exit, new_line), run_time=1)
+        e_label = always_redraw(
+            lambda: MathTex(r"\overrightarrow{e_i}", color=RED)
+            .scale(0.7)
+            .next_to(new_line, buff=0.1)
+            .shift(UP * 0.2)
+        )
 
-        self.wait(1)
+        self.add(new_line)
+        self.add(e_label)
+        # ####
+        #        self.play(ReplacementTransform(arrow_to_exit, new_line), run_time=1)
+        # Animate changes in A and D to see dynamic updates
+        axes = (
+            setup_axes(x=4, y=8, xlabel="", ylabel="")
+            .scale(0.4)
+            .next_to(agent_circle, LEFT)
+        )
+        xlabel = MathTex("s [m]", font_size=30).next_to(axes, DOWN)
+        ylabel = MathTex(r"\overrightarrow{e_{ij}}", font_size=36).next_to(axes, LEFT)
+
+        self.add(xlabel, ylabel)
+
+        def exp_func(s):
+            return A_tracker.get_value() * np.exp((-s) / D_tracker.get_value())
+
+        dir_graph = always_redraw(
+            lambda: axes.plot(exp_func, x_range=[0, 3], use_smoothing=False, color=BLUE)
+        )
+        self.play(Create(axes))
+        self.play(Create(dir_graph))
+        new_D = 2
+        D_tracker.set_value(new_D)
+        for new_A in [3, 5.5, 3]:
+            self.play(
+                Circumscribe(moving_A, color=RED, time_width=0.1),
+                A_tracker.animate.set_value(new_A),
+                run_time=2,
+            )
+        new_A = 3
+        A_tracker.set_value(new_A)
+        for new_D in [2, 0.5, 2]:
+            self.play(
+                Circumscribe(moving_D, color=RED, time_width=0.1),
+                D_tracker.animate.set_value(new_D),
+                run_time=2,
+            )
+        value_text_D.animate.set_color(WHITE).scale(1)
+        ###############################################
+        self.play(
+            FadeOut(
+                dashed_line,
+                _final_equation,
+                agent_circle,
+                other_agents,
+                other_agents_labels,
+                exit_icon,
+                rect_label,
+                text3,
+                group,
+                underbracket,
+                underbracket_label,
+                agent_label,
+                dashed_lines,
+                new_line,
+                axes,
+                dir_graph,
+                xlabel,
+                ylabel,
+                e_label,
+                e0_label,
+                rectangle,
+                value_text_A,
+                value_text_D,
+                arrow_to_exit,
+                arrow_others,
+            ),
+        )
+        self.wait(5)
 
     def visualize_agent_diameter(self, axes):
         """Visualize the agent diameter as a circle and animate it."""
@@ -365,6 +610,10 @@ class ChangingTAndV0(Scene):
 
         # Axes setup
         components["axes"] = setup_axes()
+        if self.config.agent_exit:
+            # Value trackers
+            components["A"] = ValueTracker(3)
+            components["D"] = ValueTracker(2)
 
         if self.config.show_equation:
             # Velocity equation
@@ -564,7 +813,7 @@ class ChangingTAndV0(Scene):
         # Modular setup with stage control
         components = self.setup_visualization_components()
         if self.config.agent_exit:
-            self.AgentExitVisualization(A=3.5, D=1)
+            self.AgentExitVisualization(components)
         if self.config.show_agent_diameter:
             self.visualize_agent_diameter(components["axes"])
 
