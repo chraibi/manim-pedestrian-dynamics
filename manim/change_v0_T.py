@@ -300,10 +300,14 @@ class ChangingTAndV0(Scene):
         )
         text2 = Text(
             r"""
-            The collision-free speed model is mathematically represented
-            as a derivative equation for the velocity of each pedestrian.
+            The model describes pedestrian movement through
+            a first-order ordinary differential equation
+            that governs the velocity of each pedestrian.
             
-            Typically, this can be expressed as
+            Mathematically, this is expressed as a derivative
+            equation representing the instantaneous rate of change
+            of a agents's velocity over time.
+
             """,
             font="Fira Code",
             font_size=24,
