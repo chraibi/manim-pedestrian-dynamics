@@ -9,10 +9,16 @@ import numpy as np
 
 from dataclasses import dataclass
 
+# Global variable for text font
+font = "Inconsolata-dz for Powerline"
 
+
+# "Fira Code Symbol",
+# "Fira Code Symbol",
 @dataclass
 class VisualizationConfig:
-    intro: bool = True
+    calculation_s = True
+    intro: bool = False
     agent_exit: bool = False
     show_agent_diameter: bool = False
     show_equation: bool = False
@@ -153,7 +159,7 @@ def generate_non_overlapping_positions(
 
     while len(positions) < num_agents:
         # Base distance along movement direction with some randomness
-        base_distance = np.random.uniform(1.5, 3.0)
+        base_distance = np.random.uniform(1.5, 3)
         base_pos = base_position + direction_norm * base_distance
 
         # Add random perpendicular offset
@@ -200,12 +206,250 @@ def calculate_new_direction(arrow_others, e0, agent_circle):
     return redraw
 
 
+def create_agent_direction_rectangle(
+    agent_circle, direction_to_exit, length, width=None
+):
+    """
+    Create a rectangle representing the agent's direction with specified parameters
+
+    Parameters:
+    - agent_circle: The circle representing the agent
+    - direction_to_exit: Normalized direction vector
+    - length: Length of the rectangle
+    - width: Width of the rectangle (defaults to agent diameter if None)
+
+    Returns:
+    - Rectangle object
+    - Indices of intersecting agents (if any)
+    """
+    # Get the center of the agent circle
+    center = agent_circle.get_center()
+
+    # Use agent diameter as width if not specified
+    if width is None:
+        width = agent_circle.radius * 2
+
+    # Create the rectangle
+    rectangle = Rectangle(
+        height=width,  # height corresponds to width in Manim
+        width=length,
+        color=BLUE,
+        fill_opacity=0.5,
+        stroke_width=0,
+    ).set_z_index(-1)
+
+    # Rotate the rectangle to align with direction
+    angle = np.arctan2(direction_to_exit[1], direction_to_exit[0])
+    rectangle.rotate(angle)
+
+    # Position the rectangle starting from agent center
+    rectangle.move_to(center + direction_to_exit * (length / 2))
+
+    return rectangle
+
+
+def find_intersecting_neighbor(
+    agent_pos, neighbor_positions, direction, agent_radius=0.5
+):
+    """
+    Find the nearest neighbor intersecting with the agent's movement rectangle.
+
+    Parameters:
+    - agent_pos: Position of the primary agent
+    - neighbor_positions: List of neighbor positions
+    - direction: Normalized direction vector
+    - agent_radius: Radius of agents (default 0.5)
+
+    Returns:
+    - Index of the nearest intersecting neighbor, or None if no intersection
+    """
+    # Compute left vector (90-degree rotation)
+    left = np.array([-direction[1], direction[0], 0])
+
+    # Stores potential intersecting neighbors
+    intersecting_neighbors = []
+    print("in find_intersection")
+    print(f"{agent_pos = }")
+    print(f"{direction = }")
+    for idx, neighbor_pos in enumerate(neighbor_positions):
+        print(f"{idx = }, {neighbor_pos = }")
+        # Vector from agent to neighbor
+        dist_p12 = neighbor_pos - agent_pos
+
+        # Check if neighbor is in front (positive dot product)
+        in_front = np.dot(direction, dist_p12) >= 0
+        if not in_front:
+            continue
+
+        # Check if neighbor is within the corridor width
+        corridor_width = agent_radius * 2  # Diameter of agent as corridor width
+        if abs(np.dot(left, dist_p12)) > corridor_width:
+            continue
+
+        # If we reach here, the neighbor intersects the rectangle
+        intersecting_neighbors.append((idx, np.linalg.norm(dist_p12)))
+
+    print("==========")
+    print(f"{corridor_width = }")
+    print(f"{neighbor_positions = }")
+    print(f"{intersecting_neighbors = }")
+
+    print("==========")
+    # Return the index of the nearest intersecting neighbor
+    if intersecting_neighbors:
+        ret = min(intersecting_neighbors, key=lambda x: x[1])[0]
+        print(">>>>> Return index ", ret)
+        return min(intersecting_neighbors, key=lambda x: x[1])[0]
+
+    return None
+
+
 class ChangingTAndV0(Scene):
     def __init__(
         self, *args, config: VisualizationConfig = VisualizationConfig(), **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.config = config
+
+    def dynamic_neighbor_highlight(
+        self, agent_circle, other_agents, exit_icon, neighbor_positions
+    ):
+        """
+        Dynamically highlights a neighboring agent in the direction of an exit.
+
+        Parameters:
+        agent_circle: The representation of the agent (e.g., a graphical object).
+        exit_icon: Graphical representation of the exit.
+        neighbor_positions: List of positions of neighboring agents.
+
+        Returns:
+        None
+        """
+
+        def update_highlight():
+            print("Update Highlight Called")
+            print(f"{exit_icon.get_center() = }")
+            # Calculate direction based on current exit position
+            direction = exit_icon.get_center() - agent_circle.get_center()
+            direction_norm = direction / np.linalg.norm(direction)
+            print(f"in update_highlight")
+            print(f"Direction vector: {direction}, Normalized: {direction_norm}")
+            # Find intersecting neighbor
+            intersecting_idx = find_intersecting_neighbor(
+                agent_circle.get_center(), neighbor_positions, direction_norm
+            )
+            for other_agent in other_agents:
+                # # Remove previous highlight if exists
+                other_agent.set_color(BLUE)
+
+            if intersecting_idx is not None:
+                print(f"Hightlight Agent with index {intersecting_idx}")
+                print(f"Dot position: {neighbor_positions[intersecting_idx]}")
+                other_agents[intersecting_idx].set_color(RED)
+
+            return intersecting_idx
+
+        return update_highlight()
+        # self.add_updater(lambda _: update_highlight())
+
+    def animate_calculation_s(self):
+        # Agent circle and label
+        agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
+        agent_label = (
+            MathTex(r"i", color=WHITE)
+            .scale(0.7)
+            .move_to(agent_circle.get_center() + LEFT * 0.1)
+        )
+        self.play(GrowFromCenter(agent_circle), Create(agent_label))
+
+        # Create trackers for exit position
+        exit_tracker = ValueTracker(0.5)
+
+        # Always redrawn exit icon
+        exit_icon = always_redraw(
+            lambda: ImageMobject("exit.png")
+            .scale(0.1)
+            .next_to(agent_circle, RIGHT + UP * exit_tracker.get_value(), buff=4.5)
+        )
+
+        # Always redrawn direction calculations
+        def get_direction():
+            return exit_icon.get_center() - agent_circle.get_center()
+
+        def get_normalized_direction():
+            direction = get_direction()
+            return direction / np.linalg.norm(direction)
+
+        # Always redrawn dashed line
+        dashed_line = always_redraw(
+            lambda: DashedLine(
+                start=agent_circle.get_center(),
+                end=exit_icon.get_center(),
+                color=GREEN,
+                stroke_width=2,
+            )
+        )
+
+        # Always redrawn direction arrow
+        arrow_to_exit = always_redraw(
+            lambda: Line(
+                start=agent_circle.get_center(),
+                end=agent_circle.get_center() + get_normalized_direction(),
+                color=YELLOW,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+
+        # Always redrawn e0 label
+        e0_label = always_redraw(
+            lambda: MathTex(r"\overrightarrow{e_0}", color=WHITE)
+            .scale(0.7)
+            .next_to(arrow_to_exit, buff=0.0)
+            .shift(DOWN * 0.25 + LEFT * 0.3)
+        )
+
+        # Add all elements
+        self.play(FadeIn(exit_icon))
+        self.add(dashed_line, arrow_to_exit, e0_label)
+        agent_positions = (
+            [agent_circle.get_center() + RIGHT * 2 + UP * 0.7]
+            + [agent_circle.get_center() + RIGHT * 3 + DOWN * 0.6]
+            + [agent_circle.get_center() + UP * 1.2 + RIGHT * 0.6]
+            + [agent_circle.get_center() + DOWN * 1.2 + RIGHT * 0.6]
+            + [agent_circle.get_center() + LEFT * 1.5 + UP * 0.5]
+            + [agent_circle.get_center() + LEFT * 2 + DOWN * 0.7]
+            + [agent_circle.get_center() + LEFT * 3 + UP * 0.2]
+        )
+        print(agent_positions)
+        other_agents = VGroup()
+        for i, pos in enumerate(agent_positions):
+            new_agent = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
+            new_agent.move_to(pos)
+            other_agents.add(new_agent)
+
+        self.play(Create(other_agents), run_time=1)
+        self.wait(2)
+        # Always redrawn rectangle
+        rectangle = always_redraw(
+            lambda: create_agent_direction_rectangle(
+                agent_circle, get_normalized_direction(), length=2.0
+            ).set_z_index(-1)
+        )
+        self.add(rectangle)
+        self.wait(1)
+        index = self.dynamic_neighbor_highlight(
+            agent_circle, other_agents, exit_icon, agent_positions
+        )
+        if index:
+            other_agents[index].set_color(RED)
+
+        # Animate exit position changes
+        # for new_offset in [0, 0.5, -0.5, 0]:
+        #     self.play(
+        #         exit_tracker.animate.set_value(new_offset),
+        #         run_time=2,
+        #     )
+
+        self.wait(2)
 
     def animate_equation(
         self,
@@ -229,19 +473,19 @@ class ChangingTAndV0(Scene):
             r"Initially, each agent follows its own desired path.",
             font_size=font_size - 4,
             # tex_template=TexFontTemplates.french_cursive,
-            font="Fira Code Symbol",
+            font=font,
         ).next_to(original_position, UP * 2)
         t2 = Text(
             r"Now, agents' directions are collectively shaped by interactions.",
             font_size=font_size - 4,
             # tex_template=TexFontTemplates.french_cursive,
-            font="Fira Code Symbol",
+            font=font,
         ).next_to(original_position, UP * 2)
         t3 = Text(
             r"Normalizing agent's direction.",
             font_size=font_size - 4,
             # tex_template=TexFontTemplates.french_cursive,
-            font="Fira Code Symbol",
+            font=font,
         ).next_to(original_position, UP * 2)
 
         self.play(FadeIn(initial_equation[0]), run_time=0.5)
@@ -272,10 +516,6 @@ class ChangingTAndV0(Scene):
             .shift(RIGHT)
         )
 
-        # Final transformation
-        #        self.play(
-        #            FadeOut(t1, t2, run_time=0.1),
-        #        )
         self.play(
             FadeOut(initial_equation, run_time=0.1),
             # Fade out original elements
@@ -295,7 +535,7 @@ class ChangingTAndV0(Scene):
             designed for pedestrian dynamics, emphasizing the prevention
             of collisions among agents.
             """,
-            font="Fira Code",
+            font=font,
             font_size=24,
         )
         text2 = Text(
@@ -309,7 +549,7 @@ class ChangingTAndV0(Scene):
             of a agents's velocity over time.
 
             """,
-            font="Fira Code",
+            font=font,
             font_size=24,
         )
         eq = (
@@ -333,7 +573,7 @@ class ChangingTAndV0(Scene):
             """
             The speed function regulates the overall speed of the agent,
             """,
-            font="Fira Code",
+            font=font,
             font_size=24,
             t2c={"speed function": RED, "overall speed": YELLOW},
         )
@@ -342,7 +582,7 @@ class ChangingTAndV0(Scene):
             while the direction function determines the direction
             in which the agent moves.
             """,
-            font="Fira Code",
+            font=font,
             font_size=24,
             t2c={"direction function": BLUE},
         )
@@ -355,7 +595,7 @@ class ChangingTAndV0(Scene):
             https://doi.org/10.1007/978-3-319-33482-0_29
             """,
             font_size=18,
-            font="Fira Code",
+            font=font,
             color="Gray",
         ).next_to(text, DOWN, buff=2)
         speed_index = 3
@@ -404,7 +644,7 @@ class ChangingTAndV0(Scene):
             .scale(0.7)
             .move_to(agent_circle.get_center() + LEFT * 0.1)
         )
-        text = Text("The direction function", font="Fira Code", font_size=40)
+        text = Text("The direction function", font=font, font_size=40)
         difference = Text(
             """
             The direction function defines the direction in which an agent moves.
@@ -412,7 +652,7 @@ class ChangingTAndV0(Scene):
             and the influence of neighboring agents.
             """,
             font_size=20,
-            font="Inconsolata-dz for Powerline",
+            font=font,
             t2c={
                 "direction function": BLUE,
                 "desired direction": ORANGE,
@@ -474,7 +714,7 @@ class ChangingTAndV0(Scene):
             new_agent.move_to(pos)
             other_agents.add(new_agent)
             _agent_label = (
-                MathTex(rf"{ll[i]}", color=WHITE).scale(0.7).move_to(pos + UP * 0.1)
+                MathTex(rf"{ll[i%3]}", color=WHITE).scale(0.7).move_to(pos + UP * 0.1)
             )
             other_agents_labels.add(_agent_label)
 
@@ -546,7 +786,7 @@ class ChangingTAndV0(Scene):
             r"Direction parameters",
             font_size=fs - 4,
             # tex_template=TexFontTemplates.french_cursive,
-            font="Fira Code Symbol",
+            font=font,
         ).next_to(rectangle, UP)
 
         self.play(Create(rectangle), Transform(text3, rect_label))
@@ -740,6 +980,8 @@ class ChangingTAndV0(Scene):
 
         # Axes setup
         components["axes"] = setup_axes()
+        if self.config.calculation_s:
+            self.animate_calculation_s()
         if self.config.agent_exit:
             # Value trackers
             components["A"] = ValueTracker(3)
@@ -807,7 +1049,7 @@ class ChangingTAndV0(Scene):
                         Tmax=max(T_values),
                     ),
                     font_size=20,
-                    font="Fira Code Symbol",
+                    font=font,
                     color=YELLOW,
                 ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
             )
@@ -820,7 +1062,7 @@ class ChangingTAndV0(Scene):
                         vmax=max(v0_values),
                     ),
                     font_size=20,
-                    font="Fira Code Symbol",
+                    font=font,
                     color=YELLOW,
                 ).next_to(components["t_text"], DOWN, aligned_edge=LEFT, buff=0.2)
             )
