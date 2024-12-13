@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 # Global variable for text font
 font = "Inconsolata-dz for Powerline"
+font_size_text = 30
 
 
 # "Fira Code Symbol",
@@ -18,12 +19,12 @@ font = "Inconsolata-dz for Powerline"
 @dataclass
 class VisualizationConfig:
     calculation_s = True
-    intro: bool = False
-    agent_exit: bool = False
-    show_agent_diameter: bool = False
-    show_equation: bool = False
-    animate_t_parameter: bool = False
-    animate_v0_parameter: bool = False
+    intro: bool = True
+    agent_exit: bool = True
+    show_agent_diameter: bool = True
+    show_equation: bool = True
+    animate_t_parameter: bool = True
+    animate_v0_parameter: bool = True
 
 
 # Velocity equation parameters
@@ -315,10 +316,23 @@ class ChangingTAndV0(Scene):
         # Agent circle and label
         agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.6)
         text = Text(
-            "Spacing between two agents.", font=font, font_size=30
+            "To calculate the speed function", font=font, font_size=font_size_text
         ).align_on_border(UP)
-
-        self.play(Create(Dot(agent_circle.get_center(), color=WHITE)))
+        self.play(FadeIn(text))
+        text2 = Text(
+            """
+            The spacing to the nearest neighbor
+            in the direction of movement is calculated.
+            """,
+            font=font,
+            font_size=font_size_text,
+        ).align_on_border(UP)
+        self.wait(2)
+        self.play(Transform(text, text2))
+        self.wait(4)
+        self.play(FadeOut(text), FadeOut(text2))
+        dot = Dot(agent_circle.get_center(), color=WHITE)
+        self.play(Create(dot))
         self.play(GrowFromCenter(agent_circle))
 
         # Create trackers for exit position
@@ -425,7 +439,7 @@ class ChangingTAndV0(Scene):
             center_line.animate.shift(orthogonal_direction),
         )
         distance_label = Tex(f"s", font_size=40).next_to(center_line, UP * 0.2)
-        self.play(Write(distance_label), Write(text))
+        self.play(Write(distance_label))
         self.wait(2)
         self.add(rectangle)
         self.wait(1)
@@ -494,10 +508,12 @@ class ChangingTAndV0(Scene):
                 arrow_to_exit,
                 distance_label,
                 text,
+                agent_circle,
+                dot,
             ),
             run_time=2,
         )
-        self.wait(6)
+        self.wait(2)
 
     def animate_equation(
         self,
@@ -525,7 +541,7 @@ class ChangingTAndV0(Scene):
         ).next_to(original_position, UP * 2)
         t2 = Text(
             r"Now, agents' directions are collectively shaped by interactions.",
-            font_size=font_size - 4,
+            font_size=font_size - 8,
             # tex_template=TexFontTemplates.french_cursive,
             font=font,
         ).next_to(original_position, UP * 2)
@@ -576,7 +592,9 @@ class ChangingTAndV0(Scene):
         return final_equation, underbracket, underbracket_label, t1
 
     def ShowIntro(self):
-        title = Text("The collision-free speed model", font_size=50).shift(UP * 2)
+        title = Text(
+            "The collision-free speed model", font_size=font_size_text, font=font
+        ).align_on_border(UP)
         text = MarkupText(
             """
             The collision-free speed model<sup>1</sup> is a mathematical approach
@@ -653,10 +671,9 @@ class ChangingTAndV0(Scene):
         self.play(FadeIn(ref))
         self.wait(4)
         self.play(FadeOut(ref))
-
         self.wait(2)
         self.play(Transform(text, text2), FadeIn(eq))
-        self.wait(2)
+        self.wait(4)
         self.play(Transform(text, text3))
         self.play(
             Circumscribe(
@@ -667,7 +684,7 @@ class ChangingTAndV0(Scene):
             run_time=2,
         )
 
-        self.wait(2)
+        self.wait(3)
         self.play(Transform(text, text4), FadeOut(text3))
         self.play(
             Circumscribe(
@@ -677,9 +694,9 @@ class ChangingTAndV0(Scene):
             Wiggle(text4[direction_index:25]),
             run_time=2,
         )
-        self.wait(3)
+        self.wait(2)
         self.play(FadeOut(*self.mobjects))
-        self.wait(3)
+        self.wait(1)
 
     def AgentExitVisualization(self, components):
         A_tracker = components["A"]
@@ -692,7 +709,7 @@ class ChangingTAndV0(Scene):
             .scale(0.7)
             .move_to(agent_circle.get_center() + LEFT * 0.1)
         )
-        text = Text("The direction function", font=font, font_size=40)
+        text = Text("The direction function", font=font, font_size=font_size_text)
         difference = Text(
             """
             The direction function defines the direction in which an agent moves.
@@ -832,7 +849,7 @@ class ChangingTAndV0(Scene):
         rectangle = SurroundingRectangle(group, color=YELLOW, buff=0.2)
         rect_label = Text(
             r"Direction parameters",
-            font_size=fs - 4,
+            font_size=fs - 8,
             # tex_template=TexFontTemplates.french_cursive,
             font=font,
         ).next_to(rectangle, UP)
@@ -982,23 +999,30 @@ class ChangingTAndV0(Scene):
                 arrow_others,
             ),
         )
-        self.wait(5)
+        self.wait(2)
 
     def visualize_agent_diameter(self, axes):
         """Visualize the agent diameter as a circle and animate it."""
+        agent_label = Text(
+            r"""
+            Agents are modeled as constant circles.
+            While agents may have different sizes,
+            their circular shapes remain unchanged.
+            """,
+            font_size=30,
+            font=font,
+        ).align_on_border(UP)
+
+        self.add(agent_label)
+        self.wait(4)
         circle_radius = 1  # Assuming l = 1 diameter
         circle = Circle(radius=circle_radius, color=BLUE, fill_opacity=0.3)
         semicircle = Arc(radius=1, angle=PI, color=GREEN, fill_opacity=0.3)
 
         dot = Dot()
-        self.add(dot)
+        # self.add(dot)
         self.play(GrowFromCenter(circle))
 
-        agent_label = MathTex(
-            r"\text{Agent is a circle with diameter } l", font_size=24
-        ).next_to(dot, UP * 5)
-
-        self.add(agent_label)
         dot2 = dot.copy().shift(RIGHT).set_color(BLUE)
         dot3 = dot2.copy().set_color(BLUE)
 
@@ -1028,8 +1052,6 @@ class ChangingTAndV0(Scene):
 
         # Axes setup
         components["axes"] = setup_axes()
-        if self.config.calculation_s:
-            self.animate_calculation_s()
         if self.config.agent_exit:
             # Value trackers
             components["A"] = ValueTracker(3)
@@ -1236,9 +1258,10 @@ class ChangingTAndV0(Scene):
             self.ShowIntro()
         if self.config.agent_exit:
             self.AgentExitVisualization(components)
+        if self.config.calculation_s:
+            self.animate_calculation_s()
         if self.config.show_agent_diameter:
             self.visualize_agent_diameter(components["axes"])
-
         if self.config.show_equation:
             self.add(components["axes"], components["velocity_eq"])
             self.play(Write(components["velocity_eq"]))
