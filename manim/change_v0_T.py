@@ -5,7 +5,7 @@ Run with: manim -pqh change_v0_T.py
 
 from manim import *
 import numpy as np
-
+from manim.utils.rate_functions import smooth
 
 from dataclasses import dataclass
 
@@ -233,9 +233,9 @@ def create_agent_direction_rectangle(
     rectangle = Rectangle(
         height=width,  # height corresponds to width in Manim
         width=length,
-        color=BLUE,
+        color=GRAY,
         fill_opacity=0.5,
-        stroke_width=0,
+        stroke_width=0.1,
     ).set_z_index(-1)
 
     # Rotate the rectangle to align with direction
@@ -268,11 +268,7 @@ def find_intersecting_neighbor(
 
     # Stores potential intersecting neighbors
     intersecting_neighbors = []
-    print("in find_intersection")
-    print(f"{agent_pos = }")
-    print(f"{direction = }")
     for idx, neighbor_pos in enumerate(neighbor_positions):
-        print(f"{idx = }, {neighbor_pos = }")
         # Vector from agent to neighbor
         dist_p12 = neighbor_pos - agent_pos
 
@@ -289,16 +285,9 @@ def find_intersecting_neighbor(
         # If we reach here, the neighbor intersects the rectangle
         intersecting_neighbors.append((idx, np.linalg.norm(dist_p12)))
 
-    print("==========")
-    print(f"{corridor_width = }")
-    print(f"{neighbor_positions = }")
-    print(f"{intersecting_neighbors = }")
-
-    print("==========")
     # Return the index of the nearest intersecting neighbor
     if intersecting_neighbors:
         ret = min(intersecting_neighbors, key=lambda x: x[1])[0]
-        print(">>>>> Return index ", ret)
         return min(intersecting_neighbors, key=lambda x: x[1])[0]
 
     return None
@@ -314,62 +303,42 @@ class ChangingTAndV0(Scene):
     def dynamic_neighbor_highlight(
         self, agent_circle, other_agents, exit_icon, neighbor_positions
     ):
-        """
-        Dynamically highlights a neighboring agent in the direction of an exit.
-
-        Parameters:
-        agent_circle: The representation of the agent (e.g., a graphical object).
-        exit_icon: Graphical representation of the exit.
-        neighbor_positions: List of positions of neighboring agents.
-
-        Returns:
-        None
-        """
-
-        def update_highlight():
-            print("Update Highlight Called")
-            print(f"{exit_icon.get_center() = }")
-            # Calculate direction based on current exit position
-            direction = exit_icon.get_center() - agent_circle.get_center()
-            direction_norm = direction / np.linalg.norm(direction)
-            print(f"in update_highlight")
-            print(f"Direction vector: {direction}, Normalized: {direction_norm}")
-            # Find intersecting neighbor
-            intersecting_idx = find_intersecting_neighbor(
-                agent_circle.get_center(), neighbor_positions, direction_norm
-            )
-            for other_agent in other_agents:
-                # # Remove previous highlight if exists
-                other_agent.set_color(BLUE)
-
-            if intersecting_idx is not None:
-                print(f"Hightlight Agent with index {intersecting_idx}")
-                print(f"Dot position: {neighbor_positions[intersecting_idx]}")
-                other_agents[intersecting_idx].set_color(RED)
-
-            return intersecting_idx
-
-        return update_highlight()
-        # self.add_updater(lambda _: update_highlight())
+        direction = exit_icon.get_center() - agent_circle.get_center()
+        direction_norm = direction / np.linalg.norm(direction)
+        # Find intersecting neighbor
+        intersecting_idx = find_intersecting_neighbor(
+            agent_circle.get_center(), neighbor_positions, direction_norm
+        )
+        return intersecting_idx
 
     def animate_calculation_s(self):
         # Agent circle and label
-        agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
-        agent_label = (
-            MathTex(r"i", color=WHITE)
-            .scale(0.7)
-            .move_to(agent_circle.get_center() + LEFT * 0.1)
-        )
-        self.play(GrowFromCenter(agent_circle), Create(agent_label))
+        agent_circle = Circle(radius=0.5, color=BLUE, fill_opacity=0.6)
+        text = Text(
+            "Spacing between two agents.", font=font, font_size=30
+        ).align_on_border(UP)
+
+        self.play(Create(Dot(agent_circle.get_center(), color=WHITE)))
+        self.play(GrowFromCenter(agent_circle))
 
         # Create trackers for exit position
-        exit_tracker = ValueTracker(0.5)
+        angle_tracker = ValueTracker(0.0)
 
         # Always redrawn exit icon
+        radius = 4.5
         exit_icon = always_redraw(
             lambda: ImageMobject("exit.png")
             .scale(0.1)
-            .next_to(agent_circle, RIGHT + UP * exit_tracker.get_value(), buff=4.5)
+            .move_to(
+                agent_circle.get_center()
+                + np.array(
+                    [
+                        radius * np.cos(angle_tracker.get_value()),  # x-coordinate
+                        radius * np.sin(angle_tracker.get_value()),  # y-coordinate
+                        0,  # z-coordinate
+                    ]
+                )
+            )
         )
 
         # Always redrawn direction calculations
@@ -399,27 +368,23 @@ class ChangingTAndV0(Scene):
             ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         )
 
-        # Always redrawn e0 label
-        e0_label = always_redraw(
-            lambda: MathTex(r"\overrightarrow{e_0}", color=WHITE)
-            .scale(0.7)
-            .next_to(arrow_to_exit, buff=0.0)
-            .shift(DOWN * 0.25 + LEFT * 0.3)
-        )
-
         # Add all elements
         self.play(FadeIn(exit_icon))
-        self.add(dashed_line, arrow_to_exit, e0_label)
+        self.add(dashed_line, arrow_to_exit)
         agent_positions = (
             [agent_circle.get_center() + RIGHT * 2 + UP * 0.7]
-            + [agent_circle.get_center() + RIGHT * 3 + DOWN * 0.6]
-            + [agent_circle.get_center() + UP * 1.2 + RIGHT * 0.6]
+            + [agent_circle.get_center() + RIGHT * 3.5 + DOWN * 0.7]
+            # + [agent_circle.get_center() + RIGHT * 1.5 + DOWN * 0.6]
+            + [agent_circle.get_center() + UP * 1.4 + RIGHT * 0.7]
+            + [agent_circle.get_center() + UP * 1.8 + RIGHT * 1.7]
+            + [agent_circle.get_center() + UP * 1.6 + LEFT * 0.7]
             + [agent_circle.get_center() + DOWN * 1.2 + RIGHT * 0.6]
+            + [agent_circle.get_center() + DOWN * 1.5 + RIGHT * 2.1]
+            + [agent_circle.get_center() + DOWN * 1.7 + LEFT * 0.6]
             + [agent_circle.get_center() + LEFT * 1.5 + UP * 0.5]
             + [agent_circle.get_center() + LEFT * 2 + DOWN * 0.7]
             + [agent_circle.get_center() + LEFT * 3 + UP * 0.2]
         )
-        print(agent_positions)
         other_agents = VGroup()
         for i, pos in enumerate(agent_positions):
             new_agent = Circle(radius=0.5, color=BLUE, fill_opacity=0.5)
@@ -431,25 +396,108 @@ class ChangingTAndV0(Scene):
         # Always redrawn rectangle
         rectangle = always_redraw(
             lambda: create_agent_direction_rectangle(
-                agent_circle, get_normalized_direction(), length=2.0
+                agent_circle, get_normalized_direction(), length=3.5
             ).set_z_index(-1)
         )
+        center2 = other_agents[0].get_center()
+        dot2 = Dot(center2)
+        center_line = Line(agent_circle.get_center(), center2, color=GREEN)
+        original_vector = center_line.get_vector()
+        rotation_matrix = np.array([[0, -1], [1, 0]])
+        orthogonal_direction = np.dot(original_vector[:2], rotation_matrix)
+        orthogonal_direction = -1 * np.append(orthogonal_direction, 0)
+        distance = np.linalg.norm(agent_circle.get_center() - center2)
+        dashed_line1 = DashedLine(
+            agent_circle.get_center(),
+            agent_circle.get_center() + orthogonal_direction,
+            color=YELLOW,
+        )
+        dashed_line2 = DashedLine(
+            center2,
+            center2 + orthogonal_direction,
+            color=YELLOW,
+        )
+        self.wait(1)
+        self.play(Create(dot2), Create(center_line))
+        self.play(Create(dashed_line1), Create(dashed_line2))
+        self.wait(1)
+        self.play(
+            center_line.animate.shift(orthogonal_direction),
+        )
+        distance_label = Tex(f"s", font_size=40).next_to(center_line, UP * 0.2)
+        self.play(Write(distance_label), Write(text))
+        self.wait(2)
         self.add(rectangle)
         self.wait(1)
-        index = self.dynamic_neighbor_highlight(
-            agent_circle, other_agents, exit_icon, agent_positions
+        self.play(
+            FadeOut(dashed_line1),
+            FadeOut(dashed_line2),
+            FadeOut(center_line),
+            FadeOut(dot2),
         )
-        if index:
-            other_agents[index].set_color(RED)
+        self.play(distance_label.animate.to_corner(UP + LEFT))
 
+        def redraw_highlight():
+            """
+            Updates the colors of the agents based on the intersecting index.
+            """
+            index = self.dynamic_neighbor_highlight(
+                agent_circle, other_agents, exit_icon, agent_positions
+            )
+            if index is not None:
+                center2 = other_agents[index].get_center()
+                for i, other_agent in enumerate(other_agents):
+                    other_agent.set_color(RED if i == index else BLUE)
+
+            else:
+                for other_agent in other_agents:
+                    other_agent.set_color(BLUE)
+
+            return other_agents
+
+        # Add an updater to the distance label
+        def update_distance_label():
+            index = self.dynamic_neighbor_highlight(
+                agent_circle, other_agents, exit_icon, agent_positions
+            )
+
+            if index is not None:
+                # Update distance label here if you have one
+                center2 = other_agents[index].get_center()
+                distance = np.linalg.norm(agent_circle.get_center() - center2)
+
+                return Tex(f"s = {distance:.2f} [m]", font_size=40).to_corner(UP + LEFT)
+            else:
+                return Tex("s = - [m]", font_size=40).to_corner(UP + LEFT)
+
+        #
+        self.play(FadeOut(distance_label), run_tim2=2)
+        # aa = self.add(always_redraw(update_distance_label))
+        distance_label = always_redraw(lambda: update_distance_label())
+        # Add the distance label to the scene
+        self.add(distance_label)
+        self.add(always_redraw(redraw_highlight))
         # Animate exit position changes
-        # for new_offset in [0, 0.5, -0.5, 0]:
-        #     self.play(
-        #         exit_tracker.animate.set_value(new_offset),
-        #         run_time=2,
-        #     )
+        offsets = np.concatenate([np.arange(0, 0.6, 0.2), np.arange(0.6, -0.6, -0.2)])
 
+        self.play(
+            angle_tracker.animate.set_value(2 * PI), run_time=10, rate_func=linear
+        )
         self.wait(2)
+        self.play(
+            FadeOut(
+                distance_label,
+                rectangle,
+                other_agents,
+                exit_icon,
+                dashed_line,
+                arrow_to_exit,
+                distance_label,
+                text,
+            ),
+            run_time=2,
+        )
+        self.wait(6)
 
     def animate_equation(
         self,
