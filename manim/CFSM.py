@@ -18,8 +18,8 @@ font_size_text = 30
 # "Fira Code Symbol",
 @dataclass
 class VisualizationConfig:
-    calculation_s = True
-    intro: bool = False
+    calculation_s = False
+    intro: bool = True
     agent_exit: bool = False
     show_agent_diameter: bool = False
     show_equation: bool = False
@@ -615,16 +615,17 @@ class ChangingTAndV0(Scene):
 
     def ShowIntro(self):
         title = Text(
-            "The collision-free speed model", font_size=font_size_text, font=font
+            "The collision-free speed model", font_size=font_size_text + 5, font=font
         ).align_on_border(UP)
         text = MarkupText(
             """
-            The collision-free speed model<sup>1</sup> is a mathematical approach
-            designed for pedestrian dynamics, emphasizing the prevention
+            The collision-free speed model<sup>1</sup>
+            is a mathematical approach designed for
+            pedestrian dynamics, emphasizing the prevention
             of collisions among agents.
             """,
             font=font,
-            font_size=24,
+            font_size=font_size_text,
         )
         text2 = Text(
             r"""
@@ -638,31 +639,33 @@ class ChangingTAndV0(Scene):
 
             """,
             font=font,
-            font_size=24,
+            font_size=font_size_text,
         )
         eq = (
             MathTex(
-                r"\dot{x}_i = ",
+                r"\overrightarrow{\dot{x}}_i",
+                r"=",
                 r"V_i(s_i)",
                 r"\times",
-                r"e_i(x_i, x_j, \cdots)",
-                font_size=40,
+                r"\overrightarrow{e_i}(x_i, x_j, \cdots)",
+                font_size=50,
             )
             .set_color_by_tex_to_color_map(
                 {
                     "V_i": RED,  # Set the speed function in red
-                    "e_i": BLUE,  # Set the direction function in blue
-                    "\\dot{x}_i": YELLOW,
+                    "\overrightarrow{e_i}": BLUE,  # Set the direction function in blue
+                    "\overrightarrow{\dot{x}}_i": YELLOW,
                 }
             )
             .next_to(text2, DOWN * 1.5)
         )
         text3 = Text(
             """
-            The speed function regulates the overall speed of the agent,
+            The speed function regulates the overall speed
+            of the agent,
             """,
             font=font,
-            font_size=24,
+            font_size=font_size_text,
             t2c={"speed function": RED, "overall speed": YELLOW},
         )
         text4 = Text(
@@ -671,7 +674,7 @@ class ChangingTAndV0(Scene):
             in which the agent moves.
             """,
             font=font,
-            font_size=24,
+            font_size=font_size_text,
             t2c={"direction function": BLUE},
         )
 
@@ -685,21 +688,30 @@ class ChangingTAndV0(Scene):
             font_size=18,
             font=font,
             color="Gray",
-        ).next_to(text, DOWN, buff=2)
+        ).to_corner(DOWN + LEFT)  # next_to(text, DOWN, buff=1)
         speed_index = 3
         direction_index = 10
         self.play(FadeIn(title))
         self.play(FadeIn(text))
         self.play(FadeIn(ref))
-        self.wait(4)
+        self.wait(3)
         self.play(FadeOut(ref))
-        self.wait(2)
+        self.wait(1)
         self.play(Transform(text, text2), FadeIn(eq))
-        self.wait(4)
+        self.wait(8)
         self.play(Transform(text, text3))
+        self.wait(2)
+        overall_speed_position = text3[34:36].get_center()
+        eq_position = eq[0].get_left()
+        # Create an arrow going from "overall speed" to eq[0]
+        arrow = Arrow(
+            start=overall_speed_position, end=eq_position, color=YELLOW, buff=1
+        )
+        self.play(Create(arrow), run_time=1)
+        self.play(FadeOut(arrow), run_time=1)
         self.play(
             Circumscribe(
-                eq[1],
+                eq[2],
                 color=RED,
             ),
             Wiggle(text3[speed_index:16], color=WHITE),
@@ -710,7 +722,7 @@ class ChangingTAndV0(Scene):
         self.play(Transform(text, text4), FadeOut(text3))
         self.play(
             Circumscribe(
-                eq[3],
+                eq[4],
                 color=BLUE,
             ),
             Wiggle(text4[direction_index:25]),
@@ -734,11 +746,10 @@ class ChangingTAndV0(Scene):
         text = Text("The direction function", font=font, font_size=font_size_text)
         difference = Text(
             """
-            The direction function defines the direction in which an agent moves.
             It is computed as a superposition of the desired direction towards a goal
             and the influence of neighboring agents.
             """,
-            font_size=20,
+            font_size=font_size_text,
             font=font,
             t2c={
                 "direction function": BLUE,
@@ -1031,7 +1042,7 @@ class ChangingTAndV0(Scene):
             While agents may have different sizes,
             their circular shapes remain unchanged.
             """,
-            font_size=30,
+            font_size=font_size_text,
             font=font,
         ).align_on_border(UP)
 
@@ -1054,6 +1065,33 @@ class ChangingTAndV0(Scene):
         diameter_label = MathTex(r"l", font_size=28).next_to(line, DOWN)
         self.add(line)
         self.play(Write(diameter_label))
+        self.wait(2)
+        text2 = (
+            VGroup(
+                VGroup(
+                    Text(
+                        "With the calculated spacing ",
+                        font_size=font_size_text,
+                        font=font,
+                    ),
+                    MathTex("s"),
+                    Text(
+                        " and the diameter ",
+                        font_size=font_size_text,
+                        font=font,
+                    ),
+                    MathTex("l,"),
+                ).arrange(RIGHT),  # Arrange first line horizontally
+                Text(
+                    "The speed function is calculated as follows ...",
+                    font_size=font_size_text,
+                    font=font,
+                ),
+            )
+            .arrange(DOWN, aligned_edge=LEFT)  # Arrange lines vertically
+            .align_on_border(UP)
+        )
+        self.play(Transform(agent_label, text2))
         self.wait(3)
         self.play(
             FadeOut(agent_label),
