@@ -18,13 +18,13 @@ font_size_text = 30
 # "Fira Code Symbol",
 @dataclass
 class VisualizationConfig:
-    calculation_s = False
+    calculation_s = True
     intro: bool = True
-    agent_exit: bool = False
-    show_agent_diameter: bool = False
-    show_equation: bool = False
-    animate_t_parameter: bool = False
-    animate_v0_parameter: bool = False
+    agent_exit: bool = True
+    show_agent_diameter: bool = True
+    show_equation: bool = True
+    animate_t_parameter: bool = True
+    animate_v0_parameter: bool = True
 
 
 # Velocity equation parameters
@@ -308,7 +308,7 @@ def find_intersecting_neighbor(
     return None
 
 
-class ChangingTAndV0(Scene):
+class CFSM(Scene):
     def __init__(
         self, *args, config: VisualizationConfig = VisualizationConfig(), **kwargs
     ):
@@ -398,7 +398,8 @@ class ChangingTAndV0(Scene):
 
         # Add all elements
         self.play(FadeIn(exit_icon))
-        self.add(dashed_line, arrow_to_exit)
+        self.add(dashed_line)
+        self.play(FadeOut(arrow_to_exit))
         agent_positions = (
             [agent_circle.get_center() + RIGHT * 2 + UP * 0.7]
             + [agent_circle.get_center() + RIGHT * 3.5 + DOWN * 0.7]
@@ -562,13 +563,13 @@ class ChangingTAndV0(Scene):
             font=font,
         ).next_to(original_position, UP * 2)
         t2 = Text(
-            r"Now, agents' directions are collectively shaped by interactions.",
+            r"Then, agents' directions are collectively shaped by interactions.",
             font_size=font_size - 8,
             # tex_template=TexFontTemplates.french_cursive,
             font=font,
         ).next_to(original_position, UP * 2)
         t3 = Text(
-            r"Normalizing agent's direction.",
+            r"Agent's direction is normalized.",
             font_size=font_size - 4,
             # tex_template=TexFontTemplates.french_cursive,
             font=font,
@@ -707,8 +708,6 @@ class ChangingTAndV0(Scene):
         arrow = Arrow(
             start=overall_speed_position, end=eq_position, color=YELLOW, buff=1
         )
-        self.play(Create(arrow), run_time=1)
-        self.play(FadeOut(arrow), run_time=1)
         self.play(
             Circumscribe(
                 eq[2],
@@ -717,8 +716,9 @@ class ChangingTAndV0(Scene):
             Wiggle(text3[speed_index:16], color=WHITE),
             run_time=2,
         )
-
-        self.wait(3)
+        self.play(Create(arrow), run_time=1)
+        self.play(FadeOut(arrow), run_time=1)
+        self.wait(1)
         self.play(Transform(text, text4), FadeOut(text3))
         self.play(
             Circumscribe(
@@ -746,8 +746,8 @@ class ChangingTAndV0(Scene):
         text = Text("The direction function", font=font, font_size=font_size_text)
         difference = Text(
             """
-            It is computed as a superposition of the desired direction towards a goal
-            and the influence of neighboring agents.
+            is computed as a superposition of the desired direction
+            towards a goal and the influence of neighboring agents.
             """,
             font_size=font_size_text,
             font=font,
@@ -756,7 +756,7 @@ class ChangingTAndV0(Scene):
                 "desired direction": ORANGE,
                 "neighboring agents": ORANGE,
             },
-        )
+        ).to_corner(RIGHT + UP)
         intro_text = (
             VGroup(text, difference)
             .arrange(DOWN, buff=1)
@@ -974,8 +974,7 @@ class ChangingTAndV0(Scene):
         )
         xlabel = MathTex("s [m]", font_size=30).next_to(axes, DOWN)
         ylabel = MathTex(r"\overrightarrow{e_{ij}}", font_size=36).next_to(axes, LEFT)
-
-        self.add(xlabel, ylabel)
+        self.add(xlabel)
 
         def exp_func(s):
             return A_tracker.get_value() * np.exp((-s) / D_tracker.get_value())
@@ -984,6 +983,8 @@ class ChangingTAndV0(Scene):
             lambda: axes.plot(exp_func, x_range=[0, 3], use_smoothing=False, color=BLUE)
         )
         self.play(Create(axes))
+        self.play(Transform(underbracket_label, ylabel))
+        self.play(FadeOut(underbracket))
         self.play(Create(dir_graph))
         new_D = 2
         D_tracker.set_value(new_D)
@@ -1014,10 +1015,8 @@ class ChangingTAndV0(Scene):
                 rect_label,
                 text3,
                 group,
-                underbracket,
                 underbracket_label,
                 agent_label,
-                dashed_lines,
                 new_line,
                 axes,
                 dir_graph,
@@ -1032,14 +1031,15 @@ class ChangingTAndV0(Scene):
                 arrow_others,
             ),
         )
-        self.wait(2)
+        self.wait(1)
 
     def visualize_agent_diameter(self, axes):
         """Visualize the agent diameter as a circle and animate it."""
         agent_label = Text(
             r"""
             Agents are modeled as constant circles.
-            While agents may have different sizes,
+            
+            While they may have different sizes,
             their circular shapes remain unchanged.
             """,
             font_size=font_size_text,
