@@ -4,11 +4,13 @@ Explanatory video of the [collision_free_speed_model](https://pedestriandynamics
 ## Run 
 
 ```
-manim -pql change_v0_T.py
+manim -pql CFM.py
 ```
 
 or to produce high quality video
 
 ```
-manim -pqq change_v0_T.py 
+manim -pqq CFM.py 
 ```
+
+[![Video](https://img.youtube.com/vi/_mHpy3164C8/maxresdefault.jpg)](https://youtu.be/_mHpy3164C8)
