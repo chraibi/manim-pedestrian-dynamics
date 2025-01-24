@@ -298,14 +298,17 @@ class WallInteractionScene(Scene):
                 brace_label1 = Text("Influence Buffer", font_size=20).next_to(
                     curly_brace1, LEFT
                 )
-                self.add(
-                    buffer_inner_line1,
-                    buffer_outer_line1,
-                    buffer_fill1,
-                    brace_label1,
-                    curly_brace1,
+                self.play(
+                    FadeIn(
+                        buffer_inner_line1,
+                        buffer_outer_line1,
+                        buffer_fill1,
+                        brace_label1,
+                        curly_brace1,
+                    )
                 )
-            else:
+                self.wait(2)
+            elif i == 1:
                 # Add curly brace to represent the influence buffer
                 curly_brace2 = BraceBetweenPoints(
                     point_1=wall_start + np.array([0, critical_distance, 0]),
@@ -320,20 +323,15 @@ class WallInteractionScene(Scene):
                     Transform(curly_brace1, curly_brace2),
                 )
 
-                self.add(
-                    buffer_inner_line2,
-                    buffer_outer_line2,
-                    buffer_fill2,
-                )
-            self.wait(1)
-
+                self.play(FadeIn(buffer_inner_line2, buffer_outer_line2, buffer_fill2))
+                self.wait(2)
             # Agent setup
             agent_position = case["start_pos"].copy()
             direction = case["direction"]
             agent_circle, direction_arrow = add_arrow_and_agent(
                 agent_position, direction, agent_radius, color=case["color"]
             )
-
+            self.wait(2)
             influence_shown = False
             for _ in range(50):
                 new_direction, what = calculate_new_direction(
