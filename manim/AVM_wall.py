@@ -148,7 +148,7 @@ class WallInteractionScene(Scene):
 
             # Filled rectangle for influence zone
             buffer_fill1 = Polygon(
-                wall_start + np.array([0, wall_buffer_distance + agent_radius, 0]),
+                wall_start + np.array([0, influence_distance, 0]),
                 wall_end + np.array([0, influence_distance, 0]),
                 wall_end - np.array([0, influence_distance, 0]),
                 wall_start - np.array([0, influence_distance, 0]),
@@ -215,7 +215,7 @@ class WallInteractionScene(Scene):
                         0,
                     ]
                 ),
-                color=GREEN,
+                color=YELLOW,
                 buff=0,
                 stroke_width=3,
             )
@@ -233,7 +233,7 @@ class WallInteractionScene(Scene):
                         0,
                     ]
                 ),
-                color=GREEN,
+                color=YELLOW,
                 buff=0,
                 stroke_width=3,
             )
@@ -256,6 +256,7 @@ class WallInteractionScene(Scene):
                 by the wall when moving toward it.
                 """,
                 "color": YELLOW,
+                "special_effects": True,
             },
             {
                 "start_pos": np.array([-3, wall_start[1] - 0.5 * critical_distance, 0]),
@@ -265,6 +266,7 @@ class WallInteractionScene(Scene):
                 pushed away.
                 """,
                 "color": YELLOW,
+                "special_effects": True,
             },
             {
                 "start_pos": np.array([-3, wall_start[1] + 1.3 * critical_distance, 0]),
@@ -275,6 +277,7 @@ class WallInteractionScene(Scene):
                 experience no influence from the wall.
                 """,
                 "color": YELLOW,
+                "special_effects": False,
             },
         ]
         self.add(wall)
@@ -344,7 +347,11 @@ class WallInteractionScene(Scene):
                 agent_circle.move_to(agent_position)
 
                 # Special effects
-                if what == "influence" and not influence_shown:
+                if (
+                    case["special_effects"]
+                    and what == "influence"
+                    and not influence_shown
+                ):
                     influence_shown = True
                     self.play(
                         agent_circle.animate.scale(1.2).set_color(RED), run_time=0.5
