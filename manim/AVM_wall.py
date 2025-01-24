@@ -98,7 +98,7 @@ class WallInteractionScene(Scene):
         wall_y = -1
         wall_start = np.array([-3, wall_y, 0])
         wall_end = np.array([3, wall_y, 0])
-        wall = Line(wall_start, wall_end, color=BLUE)
+        wall = Line(wall_start, wall_end, color=WHITE)
         wall_buffer_distance = 0.5
         agent_radius = 0.2
         critical_distance = wall_buffer_distance + agent_radius
@@ -255,11 +255,7 @@ class WallInteractionScene(Scene):
                 Agents within the influence zone are affected
                 by the wall when moving toward it.
                 """,
-                "color": BLUE,
-                "special_effect": lambda agent: [
-                    agent.animate.scale(1.2).set_color(RED),
-                    agent.animate.scale(1 / 1.2).set_color(YELLOW),
-                ],
+                "color": YELLOW,
             },
             {
                 "start_pos": np.array([-3, wall_start[1] - 0.5 * critical_distance, 0]),
@@ -268,11 +264,7 @@ class WallInteractionScene(Scene):
                 In the critical zone, agents are
                 pushed away.
                 """,
-                "color": BLUE,
-                "special_effect": lambda agent: [
-                    agent.animate.scale(1.2).set_color(RED),
-                    agent.animate.scale(1 / 1.2).set_color(YELLOW),
-                ],
+                "color": YELLOW,
             },
             {
                 "start_pos": np.array([-3, wall_start[1] + 1.3 * critical_distance, 0]),
@@ -282,8 +274,7 @@ class WallInteractionScene(Scene):
                 walking parallel to the wall
                 experience no influence from the wall.
                 """,
-                "color": BLUE,
-                "special_effect": None,
+                "color": YELLOW,
             },
         ]
         self.add(wall)
@@ -295,10 +286,43 @@ class WallInteractionScene(Scene):
             ).align_on_border(UP)
             self.play(Transform(starting_text, text_case))
             if i == 0:
-                self.add(buffer_inner_line1, buffer_outer_line1, buffer_fill1)
+                # Add curly brace to represent the influence buffer
+                curly_brace1 = BraceBetweenPoints(
+                    point_1=wall_start + np.array([0, influence_distance, 0]),
+                    point_2=wall_start - np.array([0, influence_distance, 0]),
+                    direction=LEFT,
+                )
+                brace_label1 = Text("Influence Buffer", font_size=20).next_to(
+                    curly_brace1, LEFT
+                )
+                self.add(
+                    buffer_inner_line1,
+                    buffer_outer_line1,
+                    buffer_fill1,
+                    brace_label1,
+                    curly_brace1,
+                )
             else:
-                self.add(buffer_inner_line2, buffer_outer_line2, buffer_fill2)
-            self.wait(2)
+                # Add curly brace to represent the influence buffer
+                curly_brace2 = BraceBetweenPoints(
+                    point_1=wall_start + np.array([0, critical_distance, 0]),
+                    point_2=wall_start - np.array([0, critical_distance, 0]),
+                    direction=LEFT,
+                )
+                brace_label2 = Text("Critical Buffer", font_size=20).next_to(
+                    curly_brace2, LEFT
+                )
+                self.play(
+                    Transform(brace_label1, brace_label2),
+                    Transform(curly_brace1, curly_brace2),
+                )
+
+                self.add(
+                    buffer_inner_line2,
+                    buffer_outer_line2,
+                    buffer_fill2,
+                )
+            self.wait(1)
 
             # Agent setup
             agent_position = case["start_pos"].copy()
@@ -320,17 +344,13 @@ class WallInteractionScene(Scene):
                 agent_circle.move_to(agent_position)
 
                 # Special effects
-                if (
-                    case["special_effect"]
-                    and what == "influence"
-                    and not influence_shown
-                ):
+                if what == "influence" and not influence_shown:
                     influence_shown = True
                     self.play(
                         agent_circle.animate.scale(1.2).set_color(RED), run_time=0.5
                     )
                     self.play(
-                        agent_circle.animate.scale(1 / 1.2).set_color(BLUE),
+                        agent_circle.animate.scale(1 / 1.2).set_color(YELLOW),
                         run_time=0.5,
                     )
                     self.wait(0.2)
