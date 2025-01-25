@@ -73,10 +73,20 @@ def neighbor_repulsion(agent1, agent2):
 
 def calculate_influence_direction(d1, newep12):
     """
-    Calculate the adjusted influence direction.
+    Calculate the adjusted influence direction based on desired and predicted directions.
     """
     if np.linalg.norm(newep12) > 0:
-        return newep12 / np.linalg.norm(newep12)
+        orthogonal_direction = np.array([-d1[1], d1[0]]) / np.linalg.norm(d1)
+        alignment = np.dot(orthogonal_direction, newep12 / np.linalg.norm(newep12))
+
+        if abs(alignment) < 1e-6:  # J_EPS equivalent
+            # Randomly choose left or right if alignment is close to zero
+            if np.random.randint(2) == 0:
+                return -orthogonal_direction
+        elif alignment > 0:
+            return -orthogonal_direction
+        return orthogonal_direction
+
     return np.zeros(2)
 
 
@@ -217,5 +227,160 @@ class NeighborInteraction(Scene):
         self.play(Create(proj_interaction_line1), Create(proj_interaction_line2))
         self.play(FadeIn(s_line), FadeIn(interaction_label))
 
+    def create_visibility_scene(self):
+        exit_icon = ImageMobject("exit.png").scale(0.5)
+        exit_position = exit_icon.get_center()
+        anticipation_time = 1
+        pos1 = np.array([-2, 0, 0])
+        velocity1 = np.array([1, 1, 0])
+        destination1 = np.array([3, 2, 0])
+        agent_radius = 0.5
+        agent_circle = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos1)
+
+        exit_icon.scale(0.3).next_to(agent_circle, RIGHT, buff=4.5)
+        dashed_line = DashedLine(
+            start=agent_circle.get_center(),
+            end=exit_icon.get_center(),
+            color=WHITE,
+            stroke_width=3,
+        )
+
+        direction_to_exit = exit_icon.get_center() - agent_circle.get_center()
+        direction_to_exit /= np.linalg.norm(direction_to_exit)
+        arrow_to_exit = Line(
+            start=agent_circle.get_center(),
+            end=agent_circle.get_center() + direction_to_exit,
+            color=WHITE,
+        ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+
+        direction = exit_icon.get_center() - agent_circle.get_center()
+        direction_norm = direction / np.linalg.norm(direction)
+
+        agent_positions = (
+            # [agent_circle.get_center() + RIGHT * 3.5 + DOWN * 0.7]
+            # [agent_circle.get_center() + RIGHT * 1.5 + DOWN * 0.6]
+            [agent_circle.get_center() + RIGHT * 2 + UP * 0.6]
+            + [agent_circle.get_center() + UP * 1.0 + RIGHT * 0.7]
+            # + [agent_circle.get_center() + UP * 1.8 + RIGHT * 1.7]
+            + [agent_circle.get_center() + UP * 1.6 + LEFT * 0.7]
+            #  + [agent_circle.get_center() + DOWN * 1.2 + RIGHT * 0.6]
+            # + [agent_circle.get_center() + DOWN * 1.5 + RIGHT * 2.1]
+            # + [agent_circle.get_center() + DOWN * 1.7 + LEFT * 0.6]
+            + [agent_circle.get_center() + LEFT * 1.5 + UP * 0.5]
+            + [agent_circle.get_center() + LEFT * 2 + DOWN * 0.7]
+            + [agent_circle.get_center() + LEFT * 3 + UP * 0.2]
+        )
+
+        agents = []
+        for pos in [pos1] + agent_positions:
+            direction_to_exit = (exit_position[:2] - pos[:2]) / np.linalg.norm(
+                exit_position[:2] - pos[:2]
+            )
+            agents.append(
+                {
+                    "position": pos,
+                    "radius": agent_radius,
+                    "velocity": direction_to_exit * 0.5,
+                    "anticipation_time": anticipation_time,
+                    "orientation": direction_to_exit,
+                    "destination": exit_position,
+                    "strength": 1.0,
+                    "range": 2.0,
+                }
+            )
+
+        other_agent_circles = []
+        other_agents = VGroup()
+        for i, pos in enumerate(agent_positions):
+            new_agent = Circle(radius=agent_radius, color=BLUE, fill_opacity=0.5)
+            new_agent.move_to(pos)
+            other_agents.add(new_agent)
+            other_agent_circles.append(new_agent)
+        # Animations
+        self.play(GrowFromCenter(agent_circle))
+        self.wait(2)
+        self.play(Create(other_agents), run_time=1)
+        self.wait(2)
+        self.play(FadeIn(exit_icon))
+        self.add(dashed_line)
+        self.play(FadeIn(arrow_to_exit))
+        for _ in range(10):
+            agent1 = agents[0]
+            agent1["position"] = pos1
+            total_influence = np.zeros(3)  # Initialize the total influence vector
+            for i, agent2 in enumerate(agents[1:]):
+                influence = neighbor_repulsion(agent1, agent2)
+                if np.linalg.norm(influence) == 0:
+                    self.play(
+                        other_agent_circles[i]
+                        .animate.set_fill(opacity=0.1)
+                        .set_color(GREY)
+                    )
+
+            for i, agent2 in enumerate(agents[1:]):
+                influence = neighbor_repulsion(agent1, agent2)
+                total_influence += influence
+                if np.linalg.norm(influence) > 0:
+                    # Highlight influencing agent
+                    self.play(
+                        other_agent_circles[i]
+                        .animate.set_fill(opacity=0.8)
+                        .set_color(ORANGE)
+                    )
+
+                    # Show influence arrow
+                    influence_arrow = Arrow(
+                        start=agent1["position"],
+                        end=agent1["position"] + influence,
+                        color=ORANGE,
+                        buff=0,
+                    )
+                    # Draw dashed line between agents
+                    influence_dashed_line = DashedLine(
+                        start=agent1["position"],
+                        end=agent2["position"],
+                        color=WHITE,
+                        stroke_width=3,
+                    )
+                    self.play(Create(influence_dashed_line))
+                    self.play(Create(influence_arrow))
+                    self.wait(0.01)
+                    # Remove highlighting and arrow
+                    self.play(
+                        FadeOut(influence_dashed_line, influence_arrow),
+                        other_agent_circles[i]
+                        .animate.set_fill(opacity=0.5)
+                        .set_color(BLUE),
+                    )
+            # Compute the resulting direction
+            desired_direction = (
+                agent1["destination"] - agent1["position"]
+            ) / np.linalg.norm(agent1["destination"] - agent1["position"])
+            resulting_direction = (
+                desired_direction + total_influence
+            ) / np.linalg.norm(desired_direction + total_influence)
+            print(desired_direction)
+            print(total_influence)
+            print(resulting_direction)
+            # Show the resulting direction arrow
+            resulting_arrow = Arrow(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction,
+                color=RED,
+                buff=0,
+            )
+            self.play(Create(resulting_arrow))
+            pos1 = np.array(pos1, dtype=float)
+            print(pos1)
+            print(resulting_direction)
+            # Update agent position and move it
+            pos1[:2] += resulting_direction[:2] * 0.1
+            agent_circle.move_to(pos1)
+            self.play(FadeOut(resulting_arrow))
+        self.wait(2)
+
     def construct(self):
-        self.create_predicted_distance_scene()
+        # self.create_predicted_distance_scene()
+        self.create_visibility_scene()
