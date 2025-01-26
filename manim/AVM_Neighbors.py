@@ -8,6 +8,14 @@ font = "Inconsolata-dz for Powerline"
 font_size_text = 30
 
 
+def compute_total_influence(target_agent, other_agents):
+    total_influence = np.zeros(3)
+    for other_agent in other_agents:
+        influence, _, dist, strength = neighbor_repulsion(target_agent, other_agent)
+        total_influence += influence
+    return total_influence
+
+
 def calculate_new_direction(
     direction,
     agent_position,
@@ -168,10 +176,11 @@ def neighbor_repulsion(agent1, agent2):
     )
 
 
-def calculate_influence_direction(d1, newep12):
+def calculate_influence_direction(d1, newep12, random_seed=42):
     """
     Calculate the adjusted influence direction based on desired and predicted directions.
     """
+    np.random.seed(random_seed)
     if np.linalg.norm(newep12) > 0:
         orthogonal_direction = np.array([-d1[1], d1[0]]) / np.linalg.norm(d1)
         alignment = np.dot(orthogonal_direction, newep12 / np.linalg.norm(newep12))
@@ -1127,6 +1136,17 @@ class NeighborInteraction(Scene):
         self._demonstrate_wall_interaction_cases(*wall_params)
 
     def simulation_act1(self):
+        grid = NumberPlane(
+            x_range=[-5, 5, 1],
+            y_range=[-5, 5, 1],
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.5,
+            },
+        )
+        self.play(Create(grid), run_time=2)
+
         agent_radius = 0.5
 
         pos1 = np.array([-2, 0, 0])
@@ -1159,20 +1179,13 @@ class NeighborInteraction(Scene):
             radius=agent_radius, color=GREY, fill_opacity=0.5
         ).move_to(pos2)
         dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
-        line = Line(
-            start=pos1 - np.array([2, 0, 0]),
-            end=pos2 + np.array([2, 0, 0]),
-            color=WHITE,
-            stroke_width=1,
-        )
         desired_direction = agent1["orientation"]
         # ------------ visualisation --------------
         text = Text(
-            """Walk the line: Agent approaching a static agent
-            """,
+            """Static agent""",
             font_size=font_size_text,
             font=font,
-        ).align_on_border(UP)
+        ).align_on_border(UP + LEFT)
         influence = 0
         resulting_direction = (desired_direction + influence) / np.linalg.norm(
             desired_direction + influence
@@ -1191,7 +1204,6 @@ class NeighborInteraction(Scene):
             m.GrowFromCenter(agent_circle1),
             m.GrowFromCenter(agent_circle2),
             FadeIn(dashed_line),
-            FadeIn(line),
         )
         self.play(Create(direction_arrow))
         current_pos = pos1
@@ -1245,12 +1257,27 @@ class NeighborInteraction(Scene):
                 info_rectangle,
                 info_text,
                 dashed_line,
-                line,
+                direction_arrow,
+                text,
+                grid,
             )
         )
-        self.wait(3)
+        self.wait(1)
 
     def simulation_act2(self):
+        grid = NumberPlane(
+            x_range=[-5, 5, 1],
+            y_range=[-5, 5, 1],
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.5,
+            },
+        )
+        self.play(Create(grid), run_time=2)
+
+        # Wait to show the grid
+        self.wait(2)
         agent_radius = 0.5
 
         pos1 = np.array([-4, 0, 0])
@@ -1283,28 +1310,20 @@ class NeighborInteraction(Scene):
             radius=agent_radius, color=YELLOW, fill_opacity=0.5
         ).move_to(pos2)
         dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
-        line = Line(
-            start=pos1 - np.array([2, 0, 0]),
-            end=pos2 + np.array([2, 0, 0]),
-            color=WHITE,
-            stroke_width=1,
-        )
         desired_direction1 = agent1["orientation"]
         desired_direction2 = agent2["orientation"]
         # ------------ visualisation --------------
         text = Text(
-            """Walk the line: Two agents approaching each other
-            """,
+            """Head-on""",
             font_size=font_size_text,
             font=font,
-        ).align_on_border(UP)
+        ).align_on_border(UP + LEFT)
 
         self.play(
             Write(text),
             m.GrowFromCenter(agent_circle1),
             m.GrowFromCenter(agent_circle2),
             FadeIn(dashed_line),
-            FadeIn(line),
         )
         current_pos1 = pos1
         current_pos2 = pos2
@@ -1391,7 +1410,7 @@ class NeighborInteraction(Scene):
                 run_time=0.1,
             )
 
-        self.wait(3)
+        self.wait(1)
         self.play(
             FadeOut(
                 agent_circle1,
@@ -1399,10 +1418,440 @@ class NeighborInteraction(Scene):
                 info_rectangle,
                 info_text,
                 dashed_line,
-                line,
+                direction_arrow1,
+                direction_arrow2,
+                text,
+                grid,
             )
         )
-        self.wait(3)
+        self.wait(1)
+
+    def simulation_act3(self):
+        grid = NumberPlane(
+            x_range=[-5, 5, 1],
+            y_range=[-5, 5, 1],
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.5,
+            },
+        )
+        self.play(Create(grid), run_time=2)
+        agent_radius = 0.5
+
+        pos1 = np.array([-4, 0, 0])
+        agent1 = {
+            "position": pos1,
+            "radius": agent_radius,
+            "velocity": np.array([1, 0, 0]),
+            "orientation": np.array([1, 0, 0]),
+            "destination": np.array([4, 0, 0]),
+            "strength": 1,
+            "anticipation_time": 0.7,
+            "range": 0.5,
+        }
+
+        pos2 = np.array([0, -4, 0])
+        agent2 = {
+            "position": pos2,
+            "radius": agent_radius,
+            "velocity": np.array([0, 1, 0]),
+            "orientation": np.array([0, 1, 0]),
+            "destination": np.array([0, 4, 0]),
+            "strength": 1,
+            "anticipation_time": 0.9,
+            "range": 0.5,
+        }
+        agent_circle1 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos1)
+        agent_circle2 = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos2)
+        dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
+        desired_direction1 = agent1["orientation"]
+        desired_direction2 = agent2["orientation"]
+        # ------------ visualisation --------------
+        text = Text(
+            """Crossing
+            """,
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP + LEFT)
+
+        self.play(
+            Write(text),
+            m.GrowFromCenter(agent_circle1),
+            m.GrowFromCenter(agent_circle2),
+            FadeIn(dashed_line),
+        )
+        current_pos1 = pos1
+        current_pos2 = pos2
+        info_rectangle = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2.8 + m.LEFT)
+        # Dynamically updating info_text
+        distance = 0.0
+        strength = 0.0
+        info_text = always_redraw(
+            lambda: Text(
+                f"distance: {distance:.2f} m\nstrength: {strength:.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle.get_center())
+        )
+        self.play(Create(info_rectangle), Create(info_text))
+        influence = 0
+        influence2 = 0
+        resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+            desired_direction1 + influence
+        )
+        direction_arrow1 = always_redraw(
+            lambda: m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.BLUE,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+            desired_direction1 + influence
+        )
+        direction_arrow2 = always_redraw(
+            lambda: m.Line(
+                start=agent2["position"],
+                end=agent2["position"] + resulting_direction2,
+                color=m.YELLOW,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        self.play(Create(direction_arrow1), Create(direction_arrow2))
+        for frame in range(35):
+            influence, adistance, distance, strength = neighbor_repulsion(
+                agent1, agent2
+            )
+            influence2, adistance2, distance2, strength2 = neighbor_repulsion(
+                agent2, agent1
+            )
+
+            # Update velocity based on influence
+            resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+                desired_direction1 + influence
+            )
+            resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+                desired_direction2 + influence2
+            )
+            resulting_arrow1 = m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+
+            # Move agent incrementally
+
+            current_pos1 = current_pos1.astype(float) + 0.2 * np.array(
+                resulting_direction1, dtype=float
+            )
+            agent1["position"] = current_pos1
+
+            current_pos2 = current_pos2.astype(float) + 0.2 * np.array(
+                resulting_direction2, dtype=float
+            )
+            agent2["position"] = current_pos2
+
+            color = GREY if strength < 0.1 else YELLOW
+
+            # Update visualization
+            self.play(
+                agent_circle1.animate.move_to(current_pos1),
+                agent_circle2.animate.move_to(current_pos2),
+                dashed_line.animate.put_start_and_end_on(current_pos1, current_pos2),
+                run_time=0.1,
+            )
+
+        self.wait(1)
+        self.play(
+            FadeOut(
+                agent_circle1,
+                agent_circle2,
+                info_rectangle,
+                info_text,
+                dashed_line,
+                direction_arrow1,
+                direction_arrow2,
+                text,
+                grid,
+            )
+        )
+        self.wait(1)
+
+    def simulation_act4(self):
+        grid = NumberPlane(
+            x_range=[-8, 8, 1],
+            y_range=[-5, 5, 1],
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.5,
+            },
+        )
+        self.play(Create(grid), run_time=2)
+        agent_radius = 0.5
+
+        pos1 = np.array([-3, 0, 0])
+        agent1 = {
+            "position": pos1,
+            "radius": agent_radius,
+            "velocity": np.array([1, 0, 0]),
+            "orientation": np.array([1, 0, 0]),
+            "destination": np.array([4, 0, 0]),
+            "strength": 1,
+            "anticipation_time": 0.7,
+            "range": 0.5,
+        }
+
+        pos2 = np.array([0, -3, 0])
+        agent2 = {
+            "position": pos2,
+            "radius": agent_radius,
+            "velocity": np.array([0, 1, 0]),
+            "orientation": np.array([0, 1, 0]),
+            "destination": np.array([0, 4, 0]),
+            "strength": 1,
+            "anticipation_time": 0.9,
+            "range": 0.5,
+        }
+        agent_circle1 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos1)
+        agent_circle2 = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos2)
+        pos3 = np.array([0, 3, 0])
+        agent3 = {
+            "position": pos3,
+            "radius": agent_radius,
+            "velocity": np.array([0, -1, 0]),
+            "orientation": np.array([0, -1, 0]),
+            "destination": np.array([0, -4, 0]),
+            "strength": 1,
+            "anticipation_time": 0.7,
+            "range": 0.5,
+        }
+
+        pos4 = np.array([3, 0, 0])
+        agent4 = {
+            "position": pos4,
+            "radius": agent_radius,
+            "velocity": np.array([-1, 0, 0]),
+            "orientation": np.array([-1, 0, 0]),
+            "destination": np.array([-4, 0, 0]),
+            "strength": 1,
+            "anticipation_time": 0.9,
+            "range": 0.5,
+        }
+        agent_circle1 = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos1)
+        agent_circle2 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos2)
+        agent_circle3 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos3)
+        agent_circle4 = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos4)
+
+        desired_direction1 = agent1["orientation"]
+        desired_direction2 = agent2["orientation"]
+        desired_direction3 = agent3["orientation"]
+        desired_direction4 = agent4["orientation"]
+
+        # ------------ visualisation --------------
+        text = Text(
+            """Crossing 4
+            """,
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP + LEFT)
+
+        self.play(
+            Write(text),
+            m.GrowFromCenter(agent_circle1),
+            m.GrowFromCenter(agent_circle2),
+            m.GrowFromCenter(agent_circle3),
+            m.GrowFromCenter(agent_circle4),
+        )
+        current_pos1 = pos1
+        current_pos2 = pos2
+        current_pos3 = pos3
+        current_pos4 = pos4
+
+        info_rectangle = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2.8 + m.LEFT)
+        # Dynamically updating info_text
+        influence = 0
+        influence2 = 0
+        influenc3 = 0
+        influence4 = 0
+        resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+            desired_direction1 + influence
+        )
+        direction_arrow1 = always_redraw(
+            lambda: m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.YELLOW,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+            desired_direction2 + influence2
+        )
+        direction_arrow2 = always_redraw(
+            lambda: m.Line(
+                start=agent2["position"],
+                end=agent2["position"] + resulting_direction2,
+                color=m.BLUE,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+
+        resulting_direction3 = (desired_direction3 + influenc3) / np.linalg.norm(
+            desired_direction3 + influenc3
+        )
+        direction_arrow3 = always_redraw(
+            lambda: m.Line(
+                start=agent3["position"],
+                end=agent3["position"] + resulting_direction3,
+                color=m.BLUE,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        resulting_direction4 = (desired_direction4 + influence4) / np.linalg.norm(
+            desired_direction4 + influence4
+        )
+        direction_arrow4 = always_redraw(
+            lambda: m.Line(
+                start=agent4["position"],
+                end=agent4["position"] + resulting_direction4,
+                color=m.YELLOW,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+
+        self.play(
+            Create(direction_arrow1),
+            Create(direction_arrow2),
+            Create(direction_arrow3),
+            Create(direction_arrow4),
+        )
+
+        for frame in range(35):
+            # agent 1
+            # Compute total influence for each agent
+            influence = compute_total_influence(agent1, [agent2, agent3, agent4])
+            influence2 = compute_total_influence(agent2, [agent1, agent3, agent4])
+            influence3 = compute_total_influence(agent3, [agent1, agent2, agent4])
+            influence4 = compute_total_influence(agent4, [agent1, agent2, agent3])
+
+            # Update velocity based on influence
+            resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+                desired_direction1 + influence
+            )
+            # agent 2
+
+            # Update velocity based on influence
+            resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+                desired_direction2 + influence2
+            )
+            # agent 3
+
+            # Update velocity based on influence
+            resulting_direction3 = (desired_direction3 + influence3) / np.linalg.norm(
+                desired_direction3 + influence3
+            )
+            # agent 4
+
+            # Update velocity based on influence
+            resulting_direction4 = (desired_direction4 + influence4) / np.linalg.norm(
+                desired_direction4 + influence4
+            )
+
+            resulting_arrow1 = m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+            resulting_arrow2 = m.Line(
+                start=agent2["position"],
+                end=agent2["position"] + resulting_direction2,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+            resulting_arrow3 = m.Line(
+                start=agent3["position"],
+                end=agent3["position"] + resulting_direction3,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+            resulting_arrow4 = m.Line(
+                start=agent4["position"],
+                end=agent4["position"] + resulting_direction4,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+
+            # Move agent incrementally
+            current_pos1 = current_pos1.astype(float) + 0.2 * np.array(
+                resulting_direction1, dtype=float
+            )
+            agent1["position"] = current_pos1
+
+            current_pos2 = current_pos2.astype(float) + 0.2 * np.array(
+                resulting_direction2, dtype=float
+            )
+            agent2["position"] = current_pos2
+
+            current_pos3 = current_pos3.astype(float) + 0.2 * np.array(
+                resulting_direction3, dtype=float
+            )
+            agent3["position"] = current_pos3
+
+            current_pos4 = current_pos4.astype(float) + 0.2 * np.array(
+                resulting_direction4, dtype=float
+            )
+            agent4["position"] = current_pos4
+
+            # Update visualization
+            self.play(
+                agent_circle1.animate.move_to(current_pos1),
+                agent_circle2.animate.move_to(current_pos2),
+                agent_circle3.animate.move_to(current_pos3),
+                agent_circle4.animate.move_to(current_pos4),
+                run_time=0.1,
+            )
+
+        self.wait(1)
+        self.play(
+            FadeOut(
+                agent_circle1,
+                agent_circle2,
+                agent_circle3,
+                agent_circle4,
+                direction_arrow1,
+                direction_arrow2,
+                direction_arrow3,
+                direction_arrow4,
+                text,
+                grid,
+            )
+        )
+        self.wait(1)
 
     # ===============================================================
     def construct(self):
@@ -1410,5 +1859,7 @@ class NeighborInteraction(Scene):
         # self.create_predicted_distance_act()
         # self.create_neighbors_act()
         # self.create_wall_act()
-        self.simulation_act1()
+        # self.simulation_act1()
         # self.simulation_act2()
+        # self.simulation_act3()
+        self.simulation_act4()
