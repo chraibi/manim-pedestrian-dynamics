@@ -672,7 +672,11 @@ class NeighborInteraction(Scene):
             .arrange(DOWN, aligned_edge=LEFT)
             .align_on_border(UP)
         )
-        self.play(m.Create(orientation_arrow), Transform(text, text2))
+        self.play(
+            FadeOut(perception_wedge),
+            m.Create(orientation_arrow),
+            Transform(text, text2),
+        )
         self.wait(3)
         # cleanup
         self.play(
@@ -686,7 +690,6 @@ class NeighborInteraction(Scene):
                 arrow_to_exit,
                 exit_icon,
                 agent_circle,
-                perception_wedge,
                 text,
             )
         )
