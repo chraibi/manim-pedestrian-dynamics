@@ -323,8 +323,8 @@ class NeighborInteraction(Scene):
             "Video Overview:\n"
             "- Anticipated distance calculation\n"
             "- Neighbor influence on direction\n"
-            "- Wall effects on agent movement",
-            "- Simulations for model demonstration",
+            "- Wall effects on agent movement\n"
+            "- Simulations for model demonstration\n",
             font=font,
             font_size=font_size_text,
             line_spacing=1.5,
@@ -371,7 +371,6 @@ class NeighborInteraction(Scene):
             Indicate(text3[speed_index:16], color=RED),
             run_time=2,
         )
-        self.play(FadeOut(arrow), run_time=1)
         self.wait(1)
         self.play(Transform(text, text4), FadeOut(text3))
         self.play(
@@ -388,6 +387,7 @@ class NeighborInteraction(Scene):
         self.wait(1)
         self.play(Write(text5))
         self.wait(2)
+        self.play(FadeOut(text5))
 
     def create_predicted_distance_act(
         self,
@@ -1137,8 +1137,6 @@ class NeighborInteraction(Scene):
 
     def simulation_act1(self):
         grid = NumberPlane(
-            x_range=[-5, 5, 1],
-            y_range=[-5, 5, 1],
             background_line_style={
                 "stroke_color": GREY,
                 "stroke_width": 1,
@@ -1259,22 +1257,19 @@ class NeighborInteraction(Scene):
                 dashed_line,
                 direction_arrow,
                 text,
-                grid,
             )
         )
         self.wait(1)
 
     def simulation_act2(self):
-        grid = NumberPlane(
-            x_range=[-5, 5, 1],
-            y_range=[-5, 5, 1],
-            background_line_style={
-                "stroke_color": GREY,
-                "stroke_width": 1,
-                "stroke_opacity": 0.5,
-            },
-        )
-        self.play(Create(grid), run_time=2)
+        # grid = NumberPlane(
+        #     background_line_style={
+        #         "stroke_color": GREY,
+        #         "stroke_width": 1,
+        #         "stroke_opacity": 0.5,
+        #     },
+        # )
+        # self.play(Create(grid), run_time=2)
 
         # Wait to show the grid
         self.wait(2)
@@ -1340,7 +1335,7 @@ class NeighborInteraction(Scene):
                 font=font,
             ).move_to(info_rectangle.get_center())
         )
-        self.play(Create(info_rectangle), Create(info_text))
+        self.play(Create(info_text), Create(info_rectangle))
         influence = 0
         influence2 = 0
         resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
@@ -1421,22 +1416,20 @@ class NeighborInteraction(Scene):
                 direction_arrow1,
                 direction_arrow2,
                 text,
-                grid,
+                # grid,
             )
         )
         self.wait(1)
 
     def simulation_act3(self):
-        grid = NumberPlane(
-            x_range=[-5, 5, 1],
-            y_range=[-5, 5, 1],
-            background_line_style={
-                "stroke_color": GREY,
-                "stroke_width": 1,
-                "stroke_opacity": 0.5,
-            },
-        )
-        self.play(Create(grid), run_time=2)
+        # grid = NumberPlane(
+        #     background_line_style={
+        #         "stroke_color": GREY,
+        #         "stroke_width": 1,
+        #         "stroke_opacity": 0.5,
+        #     },
+        # )
+        # self.play(Create(grid), run_time=2)
         agent_radius = 0.5
 
         pos1 = np.array([-4, 0, 0])
@@ -1500,7 +1493,7 @@ class NeighborInteraction(Scene):
                 font=font,
             ).move_to(info_rectangle.get_center())
         )
-        self.play(Create(info_rectangle), Create(info_text))
+        self.play(Create(info_text), Create(info_rectangle))
         influence = 0
         influence2 = 0
         resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
@@ -1581,22 +1574,20 @@ class NeighborInteraction(Scene):
                 direction_arrow1,
                 direction_arrow2,
                 text,
-                grid,
+                # grid,
             )
         )
         self.wait(1)
 
     def simulation_act4(self):
         grid = NumberPlane(
-            x_range=[-8, 8, 1],
-            y_range=[-5, 5, 1],
             background_line_style={
                 "stroke_color": GREY,
                 "stroke_width": 1,
                 "stroke_opacity": 0.5,
             },
         )
-        self.play(Create(grid), run_time=2)
+        self.play(Create(grid), run_time=1)
         agent_radius = 0.5
 
         pos1 = np.array([-3, 0, 0])
@@ -1658,10 +1649,10 @@ class NeighborInteraction(Scene):
             radius=agent_radius, color=BLUE, fill_opacity=0.5
         ).move_to(pos2)
         agent_circle3 = Circle(
-            radius=agent_radius, color=BLUE, fill_opacity=0.5
+            radius=agent_radius, color=RED, fill_opacity=0.5
         ).move_to(pos3)
         agent_circle4 = Circle(
-            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+            radius=agent_radius, color=GREEN, fill_opacity=0.5
         ).move_to(pos4)
 
         desired_direction1 = agent1["orientation"]
@@ -1727,7 +1718,7 @@ class NeighborInteraction(Scene):
             lambda: m.Line(
                 start=agent3["position"],
                 end=agent3["position"] + resulting_direction3,
-                color=m.BLUE,
+                color=m.RED,
                 buff=0,
             ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         )
@@ -1738,7 +1729,7 @@ class NeighborInteraction(Scene):
             lambda: m.Line(
                 start=agent4["position"],
                 end=agent4["position"] + resulting_direction4,
-                color=m.YELLOW,
+                color=m.GREEN,
                 buff=0,
             ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         )
@@ -1807,22 +1798,23 @@ class NeighborInteraction(Scene):
             ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
 
             # Move agent incrementally
-            current_pos1 = current_pos1.astype(float) + 0.2 * np.array(
+            dt = 0.2
+            current_pos1 = current_pos1.astype(float) + dt * np.array(
                 resulting_direction1, dtype=float
             )
             agent1["position"] = current_pos1
 
-            current_pos2 = current_pos2.astype(float) + 0.2 * np.array(
+            current_pos2 = current_pos2.astype(float) + dt * np.array(
                 resulting_direction2, dtype=float
             )
             agent2["position"] = current_pos2
 
-            current_pos3 = current_pos3.astype(float) + 0.2 * np.array(
+            current_pos3 = current_pos3.astype(float) + dt * np.array(
                 resulting_direction3, dtype=float
             )
             agent3["position"] = current_pos3
 
-            current_pos4 = current_pos4.astype(float) + 0.2 * np.array(
+            current_pos4 = current_pos4.astype(float) + dt * np.array(
                 resulting_direction4, dtype=float
             )
             agent4["position"] = current_pos4
@@ -1855,11 +1847,10 @@ class NeighborInteraction(Scene):
 
     # ===============================================================
     def construct(self):
-        # self.ShowIntro()
-        # self.create_predicted_distance_act()
-        # self.create_neighbors_act()
-        # self.create_wall_act()
-        # self.simulation_act1()
-        # self.simulation_act2()
-        # self.simulation_act3()
+        self.ShowIntro()
+        self.create_neighbors_act()
+        self.create_wall_act()
+        self.simulation_act1()
+        self.simulation_act2()
+        self.simulation_act3()
         self.simulation_act4()
