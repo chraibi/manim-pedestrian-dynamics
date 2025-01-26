@@ -220,13 +220,166 @@ def update_agent_state(agent, resulting_direction, exit_position, dt=0.1):
     return agent
 
 
-def create_interaction_info_rectangle(distance, strength):
-    # Create a text table
-
-    return m.VGroup(info_rectangle, text)
-
-
 class NeighborInteraction(Scene):
+    def ShowIntro(self):
+        title = Text(
+            "The Anticipation velocity model", font_size=font_size_text + 5, font=font
+        ).align_on_border(UP)
+        text = MarkupText(
+            """
+            The Anticipation Velocity Model (AVM)<sup>1</sup>
+            is a mathematical approach designed for
+            pedestrian dynamics.
+            """,
+            font=font,
+            font_size=font_size_text,
+        )
+        text01 = MarkupText(
+            """
+            The model is based on the Collision-Free Speed Model.
+            Key distinctions include:
+
+            - Influence direction: Orthogonal to desired movement,
+              rather than directly towards agents
+            - Influence distance: Proactively anticipated,
+              enabling more sophisticated collision prediction
+            """,
+            font=font,
+            font_size=font_size_text,
+        )
+
+        text1 = MarkupText(
+            """
+            AVM introduces a structured approach
+            by decomposing anticipation into three stages:
+            - Perception of the current situation
+            - Prediction of future scenarios
+            - Selection of strategic actions
+            """,
+            font=font,
+            font_size=font_size_text,
+        )
+
+        text2 = Text(
+            r"""
+            The model describes pedestrian movement through
+            a first-order ordinary differential equation
+            that governs the velocity of each pedestrian.
+
+            Mathematically, this is expressed as a derivative
+            equation representing the instantaneous rate of change
+            of a agent's velocity over time.
+
+            """,
+            font=font,
+            font_size=font_size_text,
+        )
+        eq = (
+            MathTex(
+                r"\overrightarrow{\dot{x}}_i",
+                r"=",
+                r"V_i(s_i)",
+                r"\times",
+                r"\overrightarrow{e_i}(x_i, x_j, \cdots)",
+                font_size=50,
+            )
+            .set_color_by_tex_to_color_map(
+                {
+                    "V_i": RED,  # Set the speed function in red
+                    "\overrightarrow{e_i}": BLUE,  # Set the direction function in blue
+                    "\overrightarrow{\dot{x}}_i": YELLOW,
+                }
+            )
+            .next_to(text2, DOWN * 1.5)
+        )
+        text3 = Text(
+            """
+            The speed function regulates the overall speed
+            of the agent,
+            """,
+            font=font,
+            font_size=font_size_text,
+            t2c={"speed function": RED, "overall speed": YELLOW},
+        )
+        text4 = Text(
+            """
+            while the direction function determines the direction
+            in which the agent moves.
+            """,
+            font=font,
+            font_size=font_size_text,
+            t2c={"direction function": BLUE},
+        )
+        text5 = Text(
+            "Video Overview:\n"
+            "- Anticipated distance calculation\n"
+            "- Neighbor influence on direction\n"
+            "- Wall effects on agent movement",
+            "- Simulations for model demonstration",
+            font=font,
+            font_size=font_size_text,
+            line_spacing=1.5,
+        )
+
+        ref = MarkupText(
+            """
+             <sup>1</sup> Xu, Q., Chraibi, M., Seyfried, A. (2021).
+            Anticipation in a velocity-based model for pedestrian dynamics.
+            Transportation Research Part C: Emerging Technologies
+            10.1016/j.trc.2021.103464
+            """,
+            font_size=18,
+            font=font,
+            color="Gray",
+        ).to_corner(DOWN + LEFT)  # next_to(text, DOWN, buff=1)
+        speed_index = 3
+        direction_index = 10
+        self.play(FadeIn(title))
+        self.play(FadeIn(text))
+        self.play(FadeIn(ref))
+        self.wait(3)
+        self.play(FadeOut(ref))
+        self.wait(1)
+        self.play(Transform(text, text1))
+        self.wait(3)
+        self.play(Transform(text, text01))
+        self.wait(3)
+        self.play(Transform(text, text2), FadeIn(eq))
+        self.wait(8)
+        self.play(Transform(text, text3))
+        self.wait(3)
+        overall_speed_position = text3[34:36].get_center()
+        eq_position = eq[0].get_left()
+        # Create an arrow going from "overall speed" to eq[0]
+        # arrow = Arrow(
+        #     start=overall_speed_position, end=eq_position, color=YELLOW, buff=1
+        # )
+        self.play(
+            Circumscribe(
+                eq[2],
+                color=RED,
+            ),
+            Indicate(text3[speed_index:16], color=RED),
+            run_time=2,
+        )
+        self.play(FadeOut(arrow), run_time=1)
+        self.wait(1)
+        self.play(Transform(text, text4), FadeOut(text3))
+        self.play(
+            Circumscribe(
+                eq[4],
+                color=BLUE,
+            ),
+            Indicate(text4[direction_index:25], color=BLUE),
+            run_time=2,
+        )
+
+        self.wait(2)
+        self.play(FadeOut(*self.mobjects))
+        self.wait(1)
+        self.play(Write(text5))
+        self.wait(2)
+
     def create_predicted_distance_act(
         self,
         pos1=np.array([-2, -2, 0]),
@@ -348,12 +501,12 @@ class NeighborInteraction(Scene):
                     "Anticipated Distance:", font_size=font_size_text, font=font
                 ).set_color(BLUE),
                 Text(
-                    "- Weights directional influence of neighbors",
+                    "- weights directional influence of neighbors and ",
                     font_size=font_size_text,
                     font=font,
                 ),
                 Text(
-                    "- Determines agent movement speed.",
+                    "- determines agent movement speed.",
                     font_size=font_size_text,
                     font=font,
                 ),
@@ -545,25 +698,21 @@ class NeighborInteraction(Scene):
         info_rectangle = Rectangle(
             width=3, height=1, color=WHITE, fill_opacity=0.2
         ).to_corner(m.DOWN + m.RIGHT)
-
-        info_text = m.Text(
-            f"distance: \nstrength: ",
-            font_size=20,
-            font=font,
-        ).move_to(info_rectangle.get_center())
+        distance = 0.0
+        strength = 0.0
+        info_text = always_redraw(
+            lambda: Text(
+                f"distance: {distance:.2f} m\nstrength: {strength:.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle.get_center())
+        )
         self.play(Create(info_rectangle), Create(info_text))
 
         for i, agent2 in enumerate(agents[1:]):
             influence, adistance, distance, strength = neighbor_repulsion(
                 agent1, agent2
             )
-            info_text2 = m.Text(
-                f"distance: {distance:.2f} m\nstrength: {strength:.2f}",
-                font_size=20,
-                font=font,
-            ).move_to(info_rectangle.get_center())
-
-            self.play(Transform(info_text, info_text2))
             total_influence += influence
 
             # Visualization of repulsion
@@ -582,12 +731,11 @@ class NeighborInteraction(Scene):
                 )
 
                 # Show influence arrow
-                influence_arrow = m.Arrow(
+                influence_arrow = Line(
                     start=agent1["position"],
                     end=agent1["position"] + influence,
-                    color=m.ORANGE,
-                    buff=0,
-                )
+                    color=ORANGE,
+                ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
                 # Draw dashed line between agents
                 influence_dashed_line = m.DashedLine(
                     start=agent1["position"],
@@ -631,28 +779,20 @@ class NeighborInteraction(Scene):
         orientation = resulting_direction[:2]  # Use 2D components
         orientation /= np.linalg.norm(orientation)  # Normalize
 
-        # Create or update orientation arrow
-        new_orientation_arrow = m.Arrow(
-            start=agent_circle.get_center(),
-            end=agent_circle.get_center()
-            + np.append(orientation, 0),  # Add z-component
-            color=m.GREEN,
-            buff=0,
-        )
-        resulting_arrow = m.Arrow(
+        resulting_arrow = m.Line(
             start=agent1["position"],
             end=agent1["position"] + resulting_direction,
             color=m.RED,
             buff=0,
-        )
+        ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         # After computing resulting_direction
         agent1 = update_agent_state(agent1, resulting_direction, exit_position)
-        orientation_arrow = m.Arrow(
+        orientation_arrow = m.Line(
             start=agent_circle.get_center(),
             end=agent_circle.get_center() + resulting_direction,
             color=m.RED,
             buff=0,
-        )
+        ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         text2 = (
             VGroup(
                 Text(
@@ -673,6 +813,7 @@ class NeighborInteraction(Scene):
             .align_on_border(UP)
         )
         self.play(
+            FadeOut(arrow_to_exit),
             FadeOut(perception_wedge),
             m.Create(orientation_arrow),
             Transform(text, text2),
@@ -686,8 +827,6 @@ class NeighborInteraction(Scene):
                 info_rectangle,
                 info_text,
                 resulting_arrow,
-                new_orientation_arrow,
-                arrow_to_exit,
                 exit_icon,
                 agent_circle,
                 text,
@@ -987,7 +1126,289 @@ class NeighborInteraction(Scene):
         wall_params = self._setup_wall_visualization()
         self._demonstrate_wall_interaction_cases(*wall_params)
 
+    def simulation_act1(self):
+        agent_radius = 0.5
+
+        pos1 = np.array([-2, 0, 0])
+        agent1 = {
+            "position": pos1,
+            "radius": agent_radius,
+            "velocity": np.array([1, 0, 0]),
+            "orientation": np.array([1, 0, 0]),
+            "destination": np.array([4, 0, 0]),
+            "strength": 1.0,
+            "anticipation_time": 1,
+            "range": 0.5,
+        }
+
+        pos2 = np.array([2, 0, 0])
+        agent2 = {
+            "position": pos2,
+            "radius": agent_radius,
+            "velocity": np.array([0, 0, 0]),
+            "orientation": np.array([1, 0, 0]),
+            "destination": np.array([4, 0, 0]),
+            "strength": 1.0,
+            "anticipation_time": 1,
+            "range": 2.5,
+        }
+        agent_circle1 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos1)
+        agent_circle2 = Circle(
+            radius=agent_radius, color=GREY, fill_opacity=0.5
+        ).move_to(pos2)
+        dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
+        line = Line(
+            start=pos1 - np.array([2, 0, 0]),
+            end=pos2 + np.array([2, 0, 0]),
+            color=WHITE,
+            stroke_width=1,
+        )
+        desired_direction = agent1["orientation"]
+        # ------------ visualisation --------------
+        text = Text(
+            """Walk the line: Agent approaching a static agent
+            """,
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP)
+        influence = 0
+        resulting_direction = (desired_direction + influence) / np.linalg.norm(
+            desired_direction + influence
+        )
+        direction_arrow = always_redraw(
+            lambda: m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction,
+                color=m.BLUE,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+
+        self.play(
+            Write(text),
+            m.GrowFromCenter(agent_circle1),
+            m.GrowFromCenter(agent_circle2),
+            FadeIn(dashed_line),
+            FadeIn(line),
+        )
+        self.play(Create(direction_arrow))
+        current_pos = pos1
+        info_rectangle = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2.8 + m.LEFT)
+        # Dynamically updating info_text
+        distance = 0.0
+        strength = 0.0
+        info_text = always_redraw(
+            lambda: Text(
+                f"distance: {distance:.2f} m\nstrength: {strength:.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle.get_center())
+        )
+        self.play(Create(info_rectangle), Create(info_text))
+
+        for frame in range(40):
+            influence, adistance, distance, strength = neighbor_repulsion(
+                agent1, agent2
+            )
+
+            # Update velocity based on influence
+            resulting_direction = (desired_direction + influence) / np.linalg.norm(
+                desired_direction + influence
+            )
+
+            # Move agent incrementally
+
+            current_pos = current_pos.astype(float) + 0.2 * np.array(
+                resulting_direction, dtype=float
+            )
+            agent1["position"] = current_pos
+
+            color = GREY if strength < 0.1 else YELLOW
+
+            # Update visualization
+            self.play(
+                agent_circle1.animate.move_to(current_pos),
+                dashed_line.animate.put_start_and_end_on(current_pos, pos2),
+                agent_circle2.animate.set_fill(opacity=0.2).set_color(color),
+                run_time=0.1,
+            )
+
+        self.wait(1)
+        self.play(
+            FadeOut(
+                agent_circle1,
+                agent_circle2,
+                info_rectangle,
+                info_text,
+                dashed_line,
+                line,
+            )
+        )
+        self.wait(3)
+
+    def simulation_act2(self):
+        agent_radius = 0.5
+
+        pos1 = np.array([-4, 0, 0])
+        agent1 = {
+            "position": pos1,
+            "radius": agent_radius,
+            "velocity": np.array([1, 0, 0]),
+            "orientation": np.array([1, 0, 0]),
+            "destination": np.array([4, 0, 0]),
+            "strength": 1,
+            "anticipation_time": 0.7,
+            "range": 0.5,
+        }
+
+        pos2 = np.array([4, 0, 0])
+        agent2 = {
+            "position": pos2,
+            "radius": agent_radius,
+            "velocity": np.array([-1, 0, 0]),
+            "orientation": np.array([-1, 0, 0]),
+            "destination": np.array([-4, 0, 0]),
+            "strength": 1,
+            "anticipation_time": 0.9,
+            "range": 0.5,
+        }
+        agent_circle1 = Circle(
+            radius=agent_radius, color=BLUE, fill_opacity=0.5
+        ).move_to(pos1)
+        agent_circle2 = Circle(
+            radius=agent_radius, color=YELLOW, fill_opacity=0.5
+        ).move_to(pos2)
+        dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
+        line = Line(
+            start=pos1 - np.array([2, 0, 0]),
+            end=pos2 + np.array([2, 0, 0]),
+            color=WHITE,
+            stroke_width=1,
+        )
+        desired_direction1 = agent1["orientation"]
+        desired_direction2 = agent2["orientation"]
+        # ------------ visualisation --------------
+        text = Text(
+            """Walk the line: Two agents approaching each other
+            """,
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP)
+
+        self.play(
+            Write(text),
+            m.GrowFromCenter(agent_circle1),
+            m.GrowFromCenter(agent_circle2),
+            FadeIn(dashed_line),
+            FadeIn(line),
+        )
+        current_pos1 = pos1
+        current_pos2 = pos2
+        info_rectangle = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2.8 + m.LEFT)
+        # Dynamically updating info_text
+        distance = 0.0
+        strength = 0.0
+        info_text = always_redraw(
+            lambda: Text(
+                f"distance: {distance:.2f} m\nstrength: {strength:.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle.get_center())
+        )
+        self.play(Create(info_rectangle), Create(info_text))
+        influence = 0
+        influence2 = 0
+        resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+            desired_direction1 + influence
+        )
+        direction_arrow1 = always_redraw(
+            lambda: m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.BLUE,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+            desired_direction1 + influence
+        )
+        direction_arrow2 = always_redraw(
+            lambda: m.Line(
+                start=agent2["position"],
+                end=agent2["position"] + resulting_direction2,
+                color=m.YELLOW,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        )
+        self.play(Create(direction_arrow1), Create(direction_arrow2))
+        for frame in range(35):
+            influence, adistance, distance, strength = neighbor_repulsion(
+                agent1, agent2
+            )
+            influence2, adistance2, distance2, strength2 = neighbor_repulsion(
+                agent2, agent1
+            )
+
+            # Update velocity based on influence
+            resulting_direction1 = (desired_direction1 + influence) / np.linalg.norm(
+                desired_direction1 + influence
+            )
+            resulting_direction2 = (desired_direction2 + influence2) / np.linalg.norm(
+                desired_direction2 + influence2
+            )
+            resulting_arrow1 = m.Line(
+                start=agent1["position"],
+                end=agent1["position"] + resulting_direction1,
+                color=m.RED,
+                buff=0,
+            ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+
+            # Move agent incrementally
+
+            current_pos1 = current_pos1.astype(float) + 0.2 * np.array(
+                resulting_direction1, dtype=float
+            )
+            agent1["position"] = current_pos1
+
+            current_pos2 = current_pos2.astype(float) + 0.2 * np.array(
+                resulting_direction2, dtype=float
+            )
+            agent2["position"] = current_pos2
+
+            color = GREY if strength < 0.1 else YELLOW
+
+            # Update visualization
+            self.play(
+                agent_circle1.animate.move_to(current_pos1),
+                agent_circle2.animate.move_to(current_pos2),
+                dashed_line.animate.put_start_and_end_on(current_pos1, current_pos2),
+                run_time=0.1,
+            )
+
+        self.wait(3)
+        self.play(
+            FadeOut(
+                agent_circle1,
+                agent_circle2,
+                info_rectangle,
+                info_text,
+                dashed_line,
+                line,
+            )
+        )
+        self.wait(3)
+
+    # ===============================================================
     def construct(self):
-        self.create_predicted_distance_act()
-        self.create_neighbors_act()
-        self.create_wall_act()
+        # self.ShowIntro()
+        # self.create_predicted_distance_act()
+        # self.create_neighbors_act()
+        # self.create_wall_act()
+        self.simulation_act1()
+        # self.simulation_act2()
