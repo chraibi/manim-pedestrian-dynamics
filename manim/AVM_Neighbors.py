@@ -966,13 +966,25 @@ class NeighborInteraction(Scene):
             self.play(FadeOut(agent_circle, direction_arrow))
 
         # Final cleanup
-        self.play(FadeOut(starting_text))
+        self.play(
+            FadeOut(
+                starting_text,
+                curly_brace1,
+                brace_label1,
+                buffer_inner_line2,
+                buffer_inner_line1,
+                buffer_outer_line1,
+                buffer_outer_line2,
+                wall,
+            )
+        )
+        self.wait(2)
 
     def create_wall_act(self):
         wall_params = self._setup_wall_visualization()
         self._demonstrate_wall_interaction_cases(*wall_params)
 
     def construct(self):
-        # self.create_predicted_distance_act()
-        # self.create_neighbors_act()
+        self.create_predicted_distance_act()
+        self.create_neighbors_act()
         self.create_wall_act()
