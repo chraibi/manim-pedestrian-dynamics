@@ -257,18 +257,6 @@ class NeighborInteraction(Scene):
             font_size=font_size_text,
         )
 
-        text1 = MarkupText(
-            """
-            AVM introduces a structured approach
-            by decomposing anticipation into three stages:
-            - Perception of the current situation
-            - Prediction of future scenarios
-            - Selection of strategic actions
-            """,
-            font=font,
-            font_size=font_size_text,
-        )
-
         text2 = Text(
             r"""
             The model describes pedestrian movement through
@@ -294,9 +282,9 @@ class NeighborInteraction(Scene):
             )
             .set_color_by_tex_to_color_map(
                 {
-                    "V_i": RED,  # Set the speed function in red
-                    "\overrightarrow{e_i}": BLUE,  # Set the direction function in blue
-                    "\overrightarrow{\dot{x}}_i": YELLOW,
+                    r"V_i": RED,  # Set the speed function in red
+                    r"\overrightarrow{e_i}": BLUE,  # Set the direction function in blue
+                    r"\overrightarrow{\dot{x}}_i": YELLOW,
                 }
             )
             .next_to(text2, DOWN * 1.5)
@@ -304,7 +292,7 @@ class NeighborInteraction(Scene):
         text3 = Text(
             """
             The speed function regulates the overall speed
-            of the agent,
+            of the agent
             """,
             font=font,
             font_size=font_size_text,
@@ -322,8 +310,8 @@ class NeighborInteraction(Scene):
         text5 = Text(
             "Video Overview:\n"
             "- Anticipated distance calculation\n"
-            "- Neighbor influence on direction\n"
-            "- Wall effects on agent movement\n"
+            "- Neighbor's influence on the direction\n"
+            "- Wall's influence on agents\n"
             "- Simulations for model demonstration\n",
             font=font,
             font_size=font_size_text,
@@ -349,10 +337,8 @@ class NeighborInteraction(Scene):
         self.wait(3)
         self.play(FadeOut(ref))
         self.wait(1)
-        self.play(Transform(text, text1))
-        self.wait(3)
         self.play(Transform(text, text01))
-        self.wait(3)
+        self.wait(10)
         self.play(Transform(text, text2), FadeIn(eq))
         self.wait(8)
         self.play(Transform(text, text3))
@@ -609,7 +595,7 @@ class NeighborInteraction(Scene):
                     "anticipation_time": anticipation_time,
                     "orientation": direction_to_exit,
                     "destination": exit_position,
-                    "strength": 1.0,
+                    "strength": 2.0,
                     "range": 0.5,
                 }
             )
@@ -841,7 +827,7 @@ class NeighborInteraction(Scene):
                 text,
             )
         )
-        self.wait(3)
+        self.wait(1)
 
     # ----wall action
     def _setup_wall_visualization(self):
