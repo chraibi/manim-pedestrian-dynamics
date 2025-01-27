@@ -638,17 +638,19 @@ class NeighborInteraction(Scene):
                 graph_func, x_range=[0, 4], use_smoothing=False, color=BLUE
             )
         )
-
-        ylabel = MathTex(r"\overrightarrow{e_{ij}}", font_size=36).next_to(axes2, LEFT)
-        vlabel = MathTex(f"v", font_size=36).next_to(axes1, LEFT)
-
+        ylabel = MathTex(r"\overrightarrow{e_{ij}}", font_size=36).next_to(
+            axes2.y_axis.get_end(), LEFT, buff=0.2
+        )
+        vlabel = MathTex("v", font_size=36).next_to(
+            axes1.y_axis.get_end(), LEFT, buff=0.2
+        )
         exp_graph = always_redraw(
             lambda: axes2.plot(
                 exp_func, x_range=[0, 3], use_smoothing=False, color=BLUE
             )
         )
-        x_range_center1 = (axes1.x_range[1] + axes1.x_range[0]) / 2
-        x_range_center2 = (axes2.x_range[1] + axes2.x_range[0]) / 2
+        x_range_center1 = axes1.x_range[1]  # (axes1.x_range[1] + axes1.x_range[0]) / 2
+        x_range_center2 = axes2.x_range[1]  # (axes2.x_range[1] + axes2.x_range[0]) / 2
         text1 = Text(
             "Speed function",
             font_size=font_size_text,
@@ -2045,13 +2047,157 @@ class NeighborInteraction(Scene):
         )
         self.wait(1)
 
+    def simulation_multiple_agents(self, num_agents=4, radius=5):
+        # Initialize agents
+        agent_radius = 0.5
+        agents = []
+
+        for i in range(num_agents):
+            # Compute equidistant points on the circle
+            angles = np.linspace(0, 2 * np.pi, num_agents, endpoint=False)
+            agents = []
+
+            for angle in angles:
+                # Compute initial position on the circle
+                start_x = radius * np.cos(angle)
+                start_y = radius * np.sin(angle)
+
+                # Compute the opposite point on the circle
+                end_x = radius * np.cos(angle + np.pi)  # Add pi to find the opposite
+                end_y = radius * np.sin(angle + np.pi)
+
+                agent = {
+                    "position": np.array([start_x, start_y, 0]),
+                    "radius": 0.3,  # Fixed agent radius
+                    "velocity": np.zeros(3),  # To be computed
+                    "orientation": np.zeros(3),  # To be computed
+                    "destination": np.array([end_x, end_y, 0]),
+                    "trajectory_points": [
+                        np.array([start_x, start_y, 0])
+                    ],  # Initialize trajectory points
+                    "anticipation_time": 1,
+                    "strength": 1,
+                    "range": 1,
+                }
+                agents.append(agent)
+
+        # Create agent circles
+        agent_circles = [
+            Circle(radius=agent_radius, color=BLUE, fill_opacity=0.5).move_to(
+                agent["position"]
+            )
+            for agent in agents
+        ]
+
+        direction_arrows = [
+            always_redraw(
+                lambda agent=agent: Line(
+                    start=agent["position"],
+                    end=agent["position"] + agent["orientation"],
+                    color=RED,
+                    buff=0,
+                ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+            )
+            for agent in agents
+        ]
+        # Create dynamic trajectories
+        trajectories = [
+            always_redraw(
+                lambda agent=agent: VMobject()
+                .set_stroke(color=YELLOW, width=2)
+                .set_points_as_corners(agent["trajectory_points"])
+            )
+            for agent in agents
+        ]
+        self.add(*trajectories)
+        # Add agents and arrows to the scene
+        self.play(
+            *[GrowFromCenter(circle) for circle in agent_circles],
+            *[Create(arrow) for arrow in direction_arrows],
+        )
+        # Simulation loop
+        for frame in range(50):
+            dt = 0.2  # Time step
+            stop_simulation = False
+            for i, agent in enumerate(agents):
+                # Calculate desired direction toward the destination
+                desired_direction = agent["destination"] - agent["position"]
+                distance_to_destination = np.linalg.norm(
+                    desired_direction
+                )  # Calculate distance
+
+                desired_direction /= np.linalg.norm(desired_direction)  # Normalize
+                # Stop simulation if any agent reaches its destination
+                if distance_to_destination < 0.1:  # Threshold for stopping
+                    stop_simulation = True
+                    break
+                # Calculate influence from other agents
+                influences = [
+                    compute_total_influence(
+                        agent,
+                        [other_agent for j, other_agent in enumerate(agents) if j != i],
+                    )
+                ]
+
+                # Combine desired direction and influence
+                resulting_direction = desired_direction + sum(influences)
+                resulting_direction /= np.linalg.norm(resulting_direction)  # Normalize
+
+                # Update agent's properties
+                agent["orientation"] = resulting_direction
+                agent["velocity"] = (
+                    resulting_direction * 1
+                )  # Set velocity (1 unit per second)
+                agent["position"] += dt * agent["velocity"]
+                agent["trajectory_points"].append(np.array(agent["position"]))
+                # Update visualization
+                agent_circles[i].move_to(agent["position"])
+
+                # Add direction arrow (optional for visualization)
+
+            # Break the outer loop if the simulation should stop
+            if stop_simulation:
+                break
+            # Animate agent movements
+            self.play(
+                *[
+                    circle.animate.move_to(agent["position"])
+                    for circle, agent in zip(agent_circles, agents)
+                ],
+                run_time=0.1,
+            )
+
+        # Fade out the scene
+        self.wait(1)
+        self.play(FadeOut(*agent_circles, *direction_arrows))
+        self.wait(4)
+
     # ===============================================================
     def construct(self):
         # self.ShowIntro()
-        self.create_predicted_distance_act()
+        # self.create_predicted_distance_act()
         # self.create_neighbors_act()
         # self.create_wall_act()
+        # TODO: Add Grid hier
         # self.simulation_act1()
         # self.simulation_act2()
         # self.simulation_act3()
         # self.simulation_act4()
+        # self.simulation_corridor()
+        # Initialize grid
+        grid = NumberPlane(
+            axis_config={
+                "stroke_color": GREY,  # Axes in red
+                "stroke_width": 1.3,  # Thicker axes
+            },
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.8,
+            },
+        )
+        self.play(Create(grid), run_time=1)
+
+        self.simulation_multiple_agents(num_agents=2, radius=4)
+        # TODO: REMOVE Grid hier
+        self.play(FadeOut(grid))
