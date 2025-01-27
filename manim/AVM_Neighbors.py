@@ -8,6 +8,19 @@ font = "Inconsolata-dz for Powerline"
 font_size_text = 30
 
 
+def setup_axes(x=10, y=4, xlabel="s [m]", ylabel="v [m/s]"):
+    """Set up the axes and add to the scene."""
+    axes = Axes(
+        x_range=[0, x, 1],
+        y_range=[0, y, 1],
+        axis_config={"tip_shape": StealthTip},
+    )
+    x_label = axes.get_x_axis_label(xlabel)
+    y_label = axes.get_y_axis_label(ylabel)
+    axes.add(x_label, y_label)
+    return axes
+
+
 def compute_total_influence(target_agent, other_agents):
     total_influence = np.zeros(3)
     for other_agent in other_agents:
@@ -385,6 +398,45 @@ class NeighborInteraction(Scene):
         radius=0.4,
         velocity_scale=0.5,
     ):
+        agent_label = Text(
+            r"""
+            Agents are modeled as constant circles.
+
+            While they may have different sizes,
+            their circular shapes remain unchanged.
+            """,
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP)
+
+        self.add(agent_label)
+        self.wait(4)
+        circle_radius = 1  # Assuming l = 1 diameter
+        circle = Circle(radius=circle_radius, color=BLUE, fill_opacity=0.3)
+        semicircle = Arc(radius=1, angle=PI, color=GREEN, fill_opacity=0.3)
+
+        dot = Dot()
+        # self.add(dot)
+        self.play(GrowFromCenter(circle))
+
+        dot2 = dot.copy().shift(RIGHT).set_color(BLUE)
+        dot3 = dot2.copy().set_color(BLUE)
+
+        self.play(Transform(dot, dot2))
+        self.play(MoveAlongPath(dot2, semicircle), run_time=1, rate_func=linear)
+        line = Line(dot3, dot2)
+        diameter_label = MathTex(r"l", font_size=28).next_to(line, DOWN)
+        self.add(line)
+        self.play(Write(diameter_label))
+        self.wait(2)
+        self.play(
+            FadeOut(agent_label),
+            FadeOut(diameter_label),
+            FadeOut(line),
+            FadeOut(dot),
+            FadeOut(dot2),
+            FadeOut(dot3),
+        )
         title = Text(
             "Predicted Distance with a time constant.",
             font_size=font_size_text,
@@ -453,9 +505,11 @@ class NeighborInteraction(Scene):
         proj1 = project_point(anticipated_pos1, pos1, interaction_vector)
         proj2 = project_point(anticipated_pos2, pos1, interaction_vector)
         s_line = Line(start=proj1, end=proj2, color=YELLOW)
-        interaction_label = MathTex("s_{i,j}^a(t + t^a)", font_size=40).move_to(
+        interaction_label = MathTex("s", font_size=40).move_to(
             s_line.get_center() + DOWN * 0.5
         )
+        interaction_label1 = interaction_label.copy()
+        interaction_label2 = interaction_label.copy()
         # Dashed lines to projections
         proj_interaction_line1 = DashedLine(
             start=anticipated_pos1,
@@ -474,7 +528,8 @@ class NeighborInteraction(Scene):
 
         # Placement of objects --- Here starts the choreography
         waiting_time = 2
-        self.play(GrowFromCenter(agent1_circle), GrowFromCenter(agent2_circle))
+        self.play(Transform(circle, agent1_circle))
+        self.play(GrowFromCenter(agent2_circle))
         self.play(Create(interaction_line))
         self.wait(waiting_time)
         # Animations to move circles from original to anticipated positions
@@ -493,7 +548,7 @@ class NeighborInteraction(Scene):
         text2 = (
             VGroup(
                 Text(
-                    "Anticipated Distance:", font_size=font_size_text, font=font
+                    "The anticipated distance", font_size=font_size_text, font=font
                 ).set_color(BLUE),
                 Text(
                     "- weights directional influence of neighbors and ",
@@ -509,14 +564,18 @@ class NeighborInteraction(Scene):
             .arrange(DOWN, aligned_edge=LEFT)
             .align_on_border(UP)
         )
+        # these dots and lines to show again the diameter
+        dot_right = Dot(circle.point_at_angle(0), color=BLUE)
+        dot_left = Dot(circle.point_at_angle(PI), color=BLUE)
+
+        line = Line(dot_left, dot_right)
+        diameter_label = MathTex(r"l", font_size=28).next_to(line, DOWN * 2)
 
         self.play(Transform(title, text2))
-        self.wait(waiting_time + 2)
-
+        self.wait(waiting_time)
         self.play(
             FadeOut(
                 s_line,
-                interaction_label,
                 interaction_line,
                 proj_interaction_line1,
                 proj_interaction_line2,
@@ -525,11 +584,171 @@ class NeighborInteraction(Scene):
                 anticipated_circle2,
                 dashed_line1,
                 dashed_line2,
-                agent1_circle,
                 agent2_circle,
-                title,
+            ),
+            FadeIn(dot_right, dot_left, line, diameter_label, run_time=2),
+        )
+        # self.wait(1)
+        self.play(FadeOut(title, dot_right, dot_left, line, circle))
+
+        # parameters direction function
+        A = ValueTracker(1)
+        B = ValueTracker(1)
+        # parameters for distance function
+        T = ValueTracker(1)
+        v0 = ValueTracker(1)
+
+        # speed plot
+        axes1 = (
+            setup_axes(x=4, y=2, xlabel="", ylabel="")
+            .scale(0.4)
+            .next_to(UP, RIGHT)
+            .shift(RIGHT * 1.2)
+        )
+        # direction plot
+        axes2 = (
+            setup_axes(x=4, y=2, xlabel="", ylabel="")
+            .scale(0.4)
+            .next_to(UP, LEFT)
+            .shift(LEFT * 1.2)
+        )
+
+        def graph_func(s):
+            if s > 6:
+                return 0
+
+            current_T = T.get_value()
+            current_v0 = v0.get_value()
+            if s <= 1:
+                return 0
+            elif 1 < s <= 1 + current_T * current_v0:
+                return min(current_v0, (s - 1) / current_T)
+            else:
+                return current_v0
+
+        def exp_func(s):
+            current_A = A.get_value()
+            current_B = B.get_value()
+            return current_A * np.exp(-s / current_B)
+
+        distance_graph = always_redraw(
+            lambda: axes1.plot(
+                graph_func, x_range=[0, 4], use_smoothing=False, color=BLUE
             )
         )
+
+        ylabel = MathTex(r"\overrightarrow{e_{ij}}", font_size=36).next_to(axes2, LEFT)
+        vlabel = MathTex(f"v", font_size=36).next_to(axes1, LEFT)
+
+        exp_graph = always_redraw(
+            lambda: axes2.plot(
+                exp_func, x_range=[0, 3], use_smoothing=False, color=BLUE
+            )
+        )
+        x_range_center1 = (axes1.x_range[1] + axes1.x_range[0]) / 2
+        x_range_center2 = (axes2.x_range[1] + axes2.x_range[0]) / 2
+        text1 = Text(
+            "Speed function",
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP + RIGHT)
+        text2 = Text(
+            "Direction function",
+            font_size=font_size_text,
+            font=font,
+        ).align_on_border(UP + LEFT)
+        info_rectangle2 = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2 + m.LEFT)
+        info_text2 = always_redraw(
+            lambda: Text(
+                f"A: {A.get_value():.2f}\nB: {B.get_value():.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle2.get_center())
+        )
+
+        info_rectangle1 = Rectangle(
+            width=3, height=1, color=WHITE, fill_opacity=0.2
+        ).to_corner(m.DOWN * 2 + m.RIGHT)
+        info_text1 = always_redraw(
+            lambda: Text(
+                f"T : {T.get_value():.2f}\nV0: {v0.get_value():.2f}",
+                font_size=20,
+                font=font,
+            ).move_to(info_rectangle1.get_center())
+        )
+
+        self.play(
+            Create(text1),
+            Create(text2),
+            interaction_label1.animate.next_to(axes1.c2p(x_range_center1, 0), DOWN),
+            # circle and label move too
+            interaction_label2.animate.next_to(axes2.c2p(x_range_center2, 0), DOWN),
+            diameter_label.animate.next_to(axes1.c2p(1, 0), DOWN),
+            FadeOut(interaction_label),
+            Create(axes1),
+            Create(axes2),
+            Create(ylabel),
+            Create(vlabel),
+        )
+        self.play(Create(exp_graph), Create(distance_graph))
+
+        self.play(
+            Create(info_rectangle1),
+            Create(info_text1),
+            Create(info_rectangle2),
+            Create(info_text2),
+        )
+
+        speed_overlay = Rectangle(
+            width=axes1.width + 1,
+            height=axes1.height + 1,
+            color=BLACK,
+            fill_opacity=0.6,
+        ).move_to(axes1)
+        direction_overlay = Rectangle(
+            width=axes2.width + 1,
+            height=axes2.height + 1,
+            color=BLACK,
+            fill_opacity=0.6,
+        ).move_to(axes2)
+
+        # Add the overlay
+        self.play(FadeIn(speed_overlay), run_time=1)
+        for new_A in [1, 1.5, 1]:
+            self.play(
+                A.animate.set_value(new_A),  # Change the ValueTracker
+                Circumscribe(info_text2[0], color=RED, time_width=0.1),
+                run_time=2,
+            )
+        for new_B in [1, 0.5, 1]:
+            self.play(
+                B.animate.set_value(new_B),
+                Circumscribe(info_text2[6], color=RED, time_width=0.1),
+                run_time=2,
+            )
+        # Remove the overlay
+
+        # Add the overlay
+        self.play(FadeOut(speed_overlay), FadeIn(direction_overlay), run_time=1)
+
+        for new_v0 in [1, 0.5, 1.5, 1]:
+            self.play(
+                v0.animate.set_value(new_v0),
+                Circumscribe(info_text1[0], color=RED, time_width=0.1),
+                run_time=2,
+            )
+
+        for new_T in [1, 0.5, 1.5, 1]:
+            self.play(
+                T.animate.set_value(new_T),
+                Circumscribe(info_text1[6], color=RED, time_width=0.1),
+                run_time=2,
+            )
+
+        self.play(FadeOut(direction_overlay), run_time=1)
+
         self.wait(2)
 
     def create_neighbors_act(self):
@@ -1834,6 +2053,7 @@ class NeighborInteraction(Scene):
     # ===============================================================
     def construct(self):
         self.ShowIntro()
+        self.create_predicted_distance_act()
         self.create_neighbors_act()
         self.create_wall_act()
         self.simulation_act1()
