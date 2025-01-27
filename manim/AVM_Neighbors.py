@@ -449,12 +449,12 @@ class NeighborInteraction(Scene):
         )
         agent2_circle = Circle(radius=radius, color=RED, fill_opacity=0.5).move_to(pos2)
         # Draw velocity vectors
-        velocity1_arrow = Arrow(
-            start=pos1, end=pos1 + velocity1 * velocity_scale, color=GREEN
-        )
-        velocity2_arrow = Arrow(
-            start=pos2, end=pos2 + velocity2 * velocity_scale, color=GREEN
-        )
+        velocity1_arrow = Line(
+            start=pos1, end=pos1 + velocity1 * velocity_scale, color=BLUE
+        ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
+        velocity2_arrow = Line(
+            start=pos2, end=pos2 + velocity2 * velocity_scale, color=RED
+        ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
         # Anticipated positions
         anticipated_pos1 = pos1 + velocity1 * anticipation_time
         anticipated_pos2 = pos2 + velocity2 * anticipation_time
@@ -531,6 +531,7 @@ class NeighborInteraction(Scene):
         self.play(GrowFromCenter(agent2_circle))
         self.play(Create(interaction_line))
         self.wait(waiting_time)
+        self.play(Create(velocity1_arrow), Create(velocity2_arrow))
         # Animations to move circles from original to anticipated positions
         self.play(
             Create(dashed_line1),
@@ -584,6 +585,8 @@ class NeighborInteraction(Scene):
                 dashed_line1,
                 dashed_line2,
                 agent2_circle,
+                velocity1_arrow,
+                velocity2_arrow,
             ),
             FadeIn(dot_right, dot_left, line, diameter_label, run_time=2),
         )
@@ -715,36 +718,36 @@ class NeighborInteraction(Scene):
 
         # Add the overlay
         self.play(FadeIn(speed_overlay), run_time=1)
-        for new_A in [1, 1.5, 1]:
-            self.play(
-                A.animate.set_value(new_A),  # Change the ValueTracker
-                Circumscribe(info_text2[0], color=RED, time_width=0.1),
-                run_time=2,
-            )
-        for new_B in [1, 0.5, 1]:
-            self.play(
-                B.animate.set_value(new_B),
-                Circumscribe(info_text2[6], color=RED, time_width=0.1),
-                run_time=2,
-            )
+        # for new_A in [1, 1.5, 1]:
+        #     self.play(
+        #         A.animate.set_value(new_A),  # Change the ValueTracker
+        #         Circumscribe(info_text2[0], color=RED, time_width=0.1),
+        #         run_time=2,
+        #     )
+        # for new_B in [1, 0.5, 1]:
+        #     self.play(
+        #         B.animate.set_value(new_B),
+        #         Circumscribe(info_text2[6], color=RED, time_width=0.1),
+        #         run_time=2,
+        #     )
         # Remove the overlay
 
         # Add the overlay
         self.play(FadeOut(speed_overlay), FadeIn(direction_overlay), run_time=1)
 
-        for new_T in [1, 0.5, 1.5, 1]:
-            self.play(
-                T.animate.set_value(new_T),
-                Circumscribe(info_text1[0], color=RED, time_width=0.1),
-                run_time=2,
-            )
+        # for new_T in [1, 0.5, 1.5, 1]:
+        #     self.play(
+        #         T.animate.set_value(new_T),
+        #         Circumscribe(info_text1[0], color=RED, time_width=0.1),
+        #         run_time=2,
+        #     )
 
-        for new_v0 in [1, 0.5, 1.5, 1]:
-            self.play(
-                v0.animate.set_value(new_v0),
-                Circumscribe(info_text1[6], color=RED, time_width=0.1),
-                run_time=2,
-            )
+        # for new_v0 in [1, 0.5, 1.5, 1]:
+        #     self.play(
+        #         v0.animate.set_value(new_v0),
+        #         Circumscribe(info_text1[6], color=RED, time_width=0.1),
+        #         run_time=2,
+        #     )
 
         self.play(FadeOut(direction_overlay), run_time=1)
         self.wait(1)
@@ -2044,11 +2047,11 @@ class NeighborInteraction(Scene):
 
     # ===============================================================
     def construct(self):
-        self.ShowIntro()
+        # self.ShowIntro()
         self.create_predicted_distance_act()
-        self.create_neighbors_act()
-        self.create_wall_act()
-        self.simulation_act1()
-        self.simulation_act2()
-        self.simulation_act3()
-        self.simulation_act4()
+        # self.create_neighbors_act()
+        # self.create_wall_act()
+        # self.simulation_act1()
+        # self.simulation_act2()
+        # self.simulation_act3()
+        # self.simulation_act4()
