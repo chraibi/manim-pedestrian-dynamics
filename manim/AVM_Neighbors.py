@@ -1368,7 +1368,6 @@ class NeighborInteraction(Scene):
         agent_circle2 = Circle(
             radius=agent_radius, color=GREY, fill_opacity=0.5
         ).move_to(pos2)
-        dashed_line = DashedLine(start=pos1, end=pos2, color=WHITE, stroke_width=0.5)
         desired_direction = agent1["orientation"]
         # ------------ visualisation --------------
         text = Text(
@@ -1393,7 +1392,6 @@ class NeighborInteraction(Scene):
             Write(text),
             m.GrowFromCenter(agent_circle1),
             m.GrowFromCenter(agent_circle2),
-            FadeIn(dashed_line),
         )
         self.play(Create(direction_arrow))
         current_pos = pos1
@@ -1434,7 +1432,6 @@ class NeighborInteraction(Scene):
             # Update visualization
             self.play(
                 agent_circle1.animate.move_to(current_pos),
-                dashed_line.animate.put_start_and_end_on(current_pos, pos2),
                 agent_circle2.animate.set_fill(opacity=0.2).set_color(color),
                 run_time=0.1,
             )
@@ -1446,25 +1443,29 @@ class NeighborInteraction(Scene):
                 agent_circle2,
                 info_rectangle,
                 info_text,
-                dashed_line,
                 direction_arrow,
                 text,
             )
         )
         self.wait(1)
 
-    def simulation_multiple_agents(self, num_agents=4, radius=5, frames=50):
+    def simulation_multiple_agents(
+        self, num_agents=4, radius=5, frames=50, crossing=False
+    ):
         # Initialize agents
         agent_radius = 0.5
         agents = []
 
         # Compute equidistant points on the circle
-        angles = np.linspace(0, 2 * np.pi, num_agents, endpoint=False)
+        if not crossing:
+            angles = np.linspace(0, 2 * np.pi, num_agents, endpoint=False)
+        else:
+            angles = np.array([0, np.pi / 2])
         agents = []
         colors = [BLUE, RED, GREEN, YELLOW, ORANGE, PURPLE, TEAL, PINK, GOLD, MAROON]
         frame = 0
         info_rectangle = Rectangle(
-            width=2.8, height=1, color=WHITE, fill_opacity=0.2
+            width=3, height=1, color=WHITE, fill_opacity=0.2
         ).to_corner(UP * 0.7 + LEFT * 0.4)
 
         text = always_redraw(
@@ -1497,7 +1498,7 @@ class NeighborInteraction(Scene):
                 "anticipation_time": 1,
                 "strength": 1,
                 "range": 1,
-                "color": colors[idx],
+                "color": colors[idx % len(colors)],
             }
             agents.append(agent)
 
@@ -1537,7 +1538,7 @@ class NeighborInteraction(Scene):
         )
         # Simulation loop
         for frame in range(frames):
-            dt = 0.2  # Time step
+            dt = 0.1  # Time step
             stop_simulation = False
             for i, agent in enumerate(agents):
                 # Calculate desired direction toward the destination
@@ -1598,10 +1599,12 @@ class NeighborInteraction(Scene):
 
     # ===============================================================
     def construct(self):
-        # self.ShowIntro()
-        # self.create_predicted_distance_act()
-        # self.create_neighbors_act()
-        # self.create_wall_act()
+        self.ShowIntro()
+        self.create_predicted_distance_act()
+        self.create_neighbors_act()
+        self.create_wall_act()
+
+        # Simulations
         grid = NumberPlane(
             axis_config={
                 "stroke_color": GREY,  # Axes in red
@@ -1614,10 +1617,10 @@ class NeighborInteraction(Scene):
             },
         )
         self.play(Create(grid), run_time=1)
-        # self.simulation_static_agent()
-        self.simulation_multiple_agents(num_agents=2, radius=3, frames=1)
-        # self.simulation_multiple_agents(num_agents=4, radius=3)
-        # self.simulation_multiple_agents(num_agents=6, radius=3)
-        # self.simulation_multiple_agents(num_agents=8, radius=3)
-
+        self.simulation_static_agent()
+        self.simulation_multiple_agents(num_agents=2, radius=3)
+        self.simulation_multiple_agents(num_agents=2, radius=2, crossing=True)
+        self.simulation_multiple_agents(num_agents=4, radius=3)
+        self.simulation_multiple_agents(num_agents=6, radius=3)
+        self.simulation_multiple_agents(num_agents=8, radius=3, frames=200)
         self.play(FadeOut(grid))
