@@ -1262,7 +1262,7 @@ class NeighborInteraction(Scene):
                         curly_brace1,
                     )
                 )
-                self.wait(2)
+                self.wait(1)
             elif i == 1:
                 # Add curly brace to represent the influence buffer
                 curly_brace2 = BraceBetweenPoints(
@@ -1279,7 +1279,7 @@ class NeighborInteraction(Scene):
                 )
 
                 self.play(FadeIn(buffer_inner_line2, buffer_outer_line2, buffer_fill2))
-                self.wait(2)
+                self.wait(1)
             # Agent setup
             agent_position = case["start_pos"].copy()
             direction = case["direction"]
@@ -1321,24 +1321,12 @@ class NeighborInteraction(Scene):
             # Cleanup
             self.play(FadeOut(agent_circle, direction_arrow))
 
-        # Final cleanup
-        self.play(
-            FadeOut(
-                starting_text,
-                curly_brace1,
-                brace_label1,
-                buffer_inner_line2,
-                buffer_inner_line1,
-                buffer_outer_line1,
-                buffer_outer_line2,
-                wall,
-            )
-        )
         self.wait(2)
 
     def create_wall_act(self):
         wall_params = self._setup_wall_visualization()
         self._demonstrate_wall_interaction_cases(*wall_params)
+        self.play(FadeOut(*self.mobjects), run_time=8)
 
     def simulation_act1(self):
         grid = NumberPlane(
