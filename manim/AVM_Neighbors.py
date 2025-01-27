@@ -279,7 +279,6 @@ class NeighborInteraction(Scene):
             Mathematically, this is expressed as a derivative
             equation representing the instantaneous rate of change
             of a agent's velocity over time.
-
             """,
             font=font,
             font_size=font_size_text,
@@ -305,7 +304,7 @@ class NeighborInteraction(Scene):
         text3 = Text(
             """
             The speed function regulates the overall speed
-            of the agent
+            of the agent,
             """,
             font=font,
             font_size=font_size_text,
@@ -400,13 +399,13 @@ class NeighborInteraction(Scene):
     ):
         agent_label = Text(
             r"""
-            Agents are modeled as constant circles.
-
-            While they may have different sizes,
-            their circular shapes remain unchanged.
+            Agents are represented as circles
+            with fixed shapes but potentially
+            different sizes.
             """,
             font_size=font_size_text,
             font=font,
+            line_spacing=1.2,
         ).align_on_border(UP)
 
         self.add(agent_label)
@@ -438,7 +437,7 @@ class NeighborInteraction(Scene):
             FadeOut(dot3),
         )
         title = Text(
-            "Predicted Distance with a time constant.",
+            "Anticipated distance with a time constant.",
             font_size=font_size_text,
             font=font,
         ).to_edge(UP)
@@ -551,12 +550,12 @@ class NeighborInteraction(Scene):
                     "The anticipated distance", font_size=font_size_text, font=font
                 ).set_color(BLUE),
                 Text(
-                    "- weights directional influence of neighbors and ",
+                    "weights directional influence of neighbors and ",
                     font_size=font_size_text,
                     font=font,
                 ),
                 Text(
-                    "- determines agent movement speed.",
+                    "determines agent movement speed.",
                     font_size=font_size_text,
                     font=font,
                 ),
@@ -733,16 +732,16 @@ class NeighborInteraction(Scene):
         # Add the overlay
         self.play(FadeOut(speed_overlay), FadeIn(direction_overlay), run_time=1)
 
-        for new_v0 in [1, 0.5, 1.5, 1]:
+        for new_T in [1, 0.5, 1.5, 1]:
             self.play(
-                v0.animate.set_value(new_v0),
+                T.animate.set_value(new_T),
                 Circumscribe(info_text1[0], color=RED, time_width=0.1),
                 run_time=2,
             )
 
-        for new_T in [1, 0.5, 1.5, 1]:
+        for new_v0 in [1, 0.5, 1.5, 1]:
             self.play(
-                T.animate.set_value(new_T),
+                v0.animate.set_value(new_v0),
                 Circumscribe(info_text1[6], color=RED, time_width=0.1),
                 run_time=2,
             )
@@ -870,11 +869,13 @@ class NeighborInteraction(Scene):
         text2 = (
             VGroup(
                 Text(
-                    "Neighbor Influence:", font_size=font_size_text, font=font
+                    "Neighbor Influence", font_size=font_size_text, font=font
                 ).set_color(BLUE),
-                Text("Influence is proportional", font_size=font_size_text, font=font),
                 Text(
-                    "to the distance between agents.",
+                    "decreases exponentially with", font_size=font_size_text, font=font
+                ),
+                Text(
+                    "the distance between agents.",
                     font_size=font_size_text,
                     font=font,
                 ),
@@ -1010,15 +1011,15 @@ class NeighborInteraction(Scene):
         text2 = (
             VGroup(
                 Text(
-                    "Movement Direction:", font_size=font_size_text, font=font
+                    "Movement Direction", font_size=font_size_text, font=font
                 ).set_color(BLUE),
                 Text(
-                    "Sum of all influences determines",
+                    "is calculated as the weighted sum",
                     font_size=font_size_text,
                     font=font,
                 ),
                 Text(
-                    "the agent's movement trajectory.",
+                    "of all neighboring influences.",
                     font_size=font_size_text,
                     font=font,
                 ),
@@ -1207,8 +1208,9 @@ class NeighborInteraction(Scene):
                 "start_pos": np.array([-3, 1.5 * critical_distance, 0]),
                 "direction": np.array([1, -1, 0]) / np.linalg.norm([1, -1, 0]),
                 "text": """
-                Agents within the influence zone are affected
-                by the wall when moving toward it.
+                Within the influence zone,
+                agents are guided away from the wall
+                when approaching it.
                 """,
                 "color": YELLOW,
                 "special_effects": True,
@@ -1217,8 +1219,9 @@ class NeighborInteraction(Scene):
                 "start_pos": np.array([-3, wall_start[1] - 0.5 * critical_distance, 0]),
                 "direction": np.array([1, 0, 0]) / np.linalg.norm([1, 0, 0]),
                 "text": """
-                In the critical zone, agents are
-                pushed away.
+                In the critical zone,
+                agents are strongly repelled
+                from the wall.
                 """,
                 "color": YELLOW,
                 "special_effects": True,
@@ -1227,20 +1230,20 @@ class NeighborInteraction(Scene):
                 "start_pos": np.array([-3, wall_start[1] + 1.3 * critical_distance, 0]),
                 "direction": np.array([1, 0, 0]) / np.linalg.norm([1, 0, 0]),
                 "text": """
-                Agents outside the critical area and
-                walking parallel to the wall
-                experience no influence from the wall.
+                Outside these zones,
+                agents moving parallel to the wall
+                remain unaffected.
                 """,
                 "color": YELLOW,
                 "special_effects": False,
             },
         ]
         self.add(wall)
-        self.wait(2)
+        self.wait(1)
         for i, case in enumerate(cases):
             # Update text
             text_case = Text(
-                case["text"], font=font, font_size=font_size_text
+                case["text"], font=font, font_size=font_size_text, line_spacing=1.2
             ).align_on_border(UP)
             self.play(Transform(starting_text, text_case))
             if i == 0:
@@ -1250,9 +1253,9 @@ class NeighborInteraction(Scene):
                     point_2=wall_start - np.array([0, influence_distance, 0]),
                     direction=LEFT,
                 )
-                brace_label1 = Text(
-                    "Influence Buffer", font_size=20, font=font
-                ).next_to(curly_brace1, LEFT)
+                brace_label1 = Text("Influence zone", font_size=20, font=font).next_to(
+                    curly_brace1, LEFT
+                )
                 self.play(
                     FadeIn(
                         buffer_inner_line1,
@@ -1270,7 +1273,7 @@ class NeighborInteraction(Scene):
                     point_2=wall_start - np.array([0, critical_distance, 0]),
                     direction=LEFT,
                 )
-                brace_label2 = Text("Critical Buffer", font_size=20, font=font).next_to(
+                brace_label2 = Text("Critical zone", font_size=20, font=font).next_to(
                     curly_brace2, LEFT
                 )
                 self.play(
@@ -1321,12 +1324,12 @@ class NeighborInteraction(Scene):
             # Cleanup
             self.play(FadeOut(agent_circle, direction_arrow))
 
-        self.wait(2)
+    #        self.wait(2)
 
     def create_wall_act(self):
         wall_params = self._setup_wall_visualization()
         self._demonstrate_wall_interaction_cases(*wall_params)
-        self.play(FadeOut(*self.mobjects), run_time=8)
+        self.play(FadeOut(*self.mobjects), run_time=5)
 
     def simulation_act1(self):
         grid = NumberPlane(
@@ -1502,7 +1505,8 @@ class NeighborInteraction(Scene):
         desired_direction2 = agent2["orientation"]
         # ------------ visualisation --------------
         text = Text(
-            """Head-on""",
+            """
+            Head-on""",
             font_size=font_size_text,
             font=font,
         ).align_on_border(UP + LEFT)
