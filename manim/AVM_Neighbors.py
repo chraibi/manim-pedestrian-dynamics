@@ -2052,38 +2052,49 @@ class NeighborInteraction(Scene):
         agent_radius = 0.5
         agents = []
 
-        for i in range(num_agents):
-            # Compute equidistant points on the circle
-            angles = np.linspace(0, 2 * np.pi, num_agents, endpoint=False)
-            agents = []
+        # Compute equidistant points on the circle
+        angles = np.linspace(0, 2 * np.pi, num_agents, endpoint=False)
+        agents = []
+        colors = [BLUE, RED, GREEN, YELLOW, ORANGE, PURPLE, TEAL, PINK, GOLD, MAROON]
+        frame = 0
 
-            for angle in angles:
-                # Compute initial position on the circle
-                start_x = radius * np.cos(angle)
-                start_y = radius * np.sin(angle)
+        text = always_redraw(
+            lambda: Text(
+                f"Agents: {num_agents}\nFrame : {frame}",
+                font_size=font_size_text,
+                font=font,
+            ).align_on_border(UP + LEFT)
+        )
+        self.play(Create(text))
 
-                # Compute the opposite point on the circle
-                end_x = radius * np.cos(angle + np.pi)  # Add pi to find the opposite
-                end_y = radius * np.sin(angle + np.pi)
+        for idx, angle in enumerate(angles):
+            # Compute initial position on the circle
+            start_x = radius * np.cos(angle)
+            start_y = radius * np.sin(angle)
 
-                agent = {
-                    "position": np.array([start_x, start_y, 0]),
-                    "radius": 0.3,  # Fixed agent radius
-                    "velocity": np.zeros(3),  # To be computed
-                    "orientation": np.zeros(3),  # To be computed
-                    "destination": np.array([end_x, end_y, 0]),
-                    "trajectory_points": [
-                        np.array([start_x, start_y, 0])
-                    ],  # Initialize trajectory points
-                    "anticipation_time": 1,
-                    "strength": 1,
-                    "range": 1,
-                }
-                agents.append(agent)
+            # Compute the opposite point on the circle
+            end_x = radius * np.cos(angle + np.pi)  # Add pi to find the opposite
+            end_y = radius * np.sin(angle + np.pi)
+
+            agent = {
+                "position": np.array([start_x, start_y, 0]),
+                "radius": 0.3,  # Fixed agent radius
+                "velocity": np.zeros(3),  # To be computed
+                "orientation": np.zeros(3),  # To be computed
+                "destination": np.array([end_x, end_y, 0]),
+                "trajectory_points": [
+                    np.array([start_x, start_y, 0])
+                ],  # Initialize trajectory points
+                "anticipation_time": 1,
+                "strength": 1,
+                "range": 1,
+                "color": colors[idx],
+            }
+            agents.append(agent)
 
         # Create agent circles
         agent_circles = [
-            Circle(radius=agent_radius, color=BLUE, fill_opacity=0.5).move_to(
+            Circle(radius=agent_radius, color=agent["color"], fill_opacity=0.5).move_to(
                 agent["position"]
             )
             for agent in agents
@@ -2094,7 +2105,7 @@ class NeighborInteraction(Scene):
                 lambda agent=agent: Line(
                     start=agent["position"],
                     end=agent["position"] + agent["orientation"],
-                    color=RED,
+                    color=agent["color"],
                     buff=0,
                 ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
             )
@@ -2104,7 +2115,7 @@ class NeighborInteraction(Scene):
         trajectories = [
             always_redraw(
                 lambda agent=agent: VMobject()
-                .set_stroke(color=YELLOW, width=2)
+                .set_stroke(color=agent["color"], width=2)
                 .set_points_as_corners(agent["trajectory_points"])
             )
             for agent in agents
@@ -2198,6 +2209,6 @@ class NeighborInteraction(Scene):
         )
         self.play(Create(grid), run_time=1)
 
-        self.simulation_multiple_agents(num_agents=2, radius=4)
+        self.simulation_multiple_agents(num_agents=4, radius=3)
         # TODO: REMOVE Grid hier
         self.play(FadeOut(grid))
