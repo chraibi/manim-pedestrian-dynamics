@@ -748,8 +748,8 @@ class NeighborInteraction(Scene):
             )
 
         self.play(FadeOut(direction_overlay), run_time=1)
-
-        self.wait(2)
+        self.wait(1)
+        self.play(FadeOut(*self.mobjects), run_time=5)
 
     def create_neighbors_act(self):
         text = Text(
