@@ -243,6 +243,33 @@ def update_agent_state(agent, resulting_direction, exit_position, dt=0.1):
 
 
 class NeighborInteraction(Scene):
+    def construct(self):
+        self.ShowIntro()
+        self.create_predicted_distance_act()
+        self.create_neighbors_act()
+        self.create_wall_act()
+
+        grid = NumberPlane(
+            axis_config={
+                "stroke_color": GREY,  # Axes in red
+                "stroke_width": 1.3,  # Thicker axes
+            },
+            background_line_style={
+                "stroke_color": GREY,
+                "stroke_width": 1,
+                "stroke_opacity": 0.8,
+            },
+        )
+        self.play(Create(grid), run_time=1)
+        self.simulation_static_agent()
+        self.simulation_multiple_agents(num_agents=2, radius=3)
+        self.simulation_multiple_agents(num_agents=2, radius=2, crossing=True)
+        self.simulation_multiple_agents(num_agents=4, radius=3)
+        self.simulation_multiple_agents(num_agents=6, radius=3)
+        self.simulation_multiple_agents(num_agents=8, radius=3, frames=1000)
+        self.play(FadeOut(grid))
+
+    # ===============================================================
     def ShowIntro(self):
         title = Text(
             "The Anticipation velocity model", font_size=font_size_text + 5, font=font
@@ -1450,7 +1477,7 @@ class NeighborInteraction(Scene):
         self.wait(1)
 
     def simulation_multiple_agents(
-        self, num_agents=4, radius=5, frames=200, crossing=False, StopAtExit=True
+        self, num_agents=4, radius=5, frames=1000, crossing=False, StopAtExit=True
     ):
         # Initialize agents
         agent_radius = 0.5
@@ -1539,7 +1566,7 @@ class NeighborInteraction(Scene):
         )
         # Simulation loop
         for frame in range(frames):
-            dt = 0.01  # Time step
+            dt = 0.1  # Time step
             stop_simulation = False
             for i, agent in enumerate(agents):
                 # Calculate desired direction toward the destination
@@ -1603,30 +1630,3 @@ class NeighborInteraction(Scene):
             )
         )
         self.wait(1)
-
-    # ===============================================================
-    def construct(self):
-        # self.ShowIntro()
-        #   self.create_predicted_distance_act()
-        # self.create_neighbors_act()
-        #   self.create_wall_act()  #
-
-        grid = NumberPlane(
-            axis_config={
-                "stroke_color": GREY,  # Axes in red
-                "stroke_width": 1.3,  # Thicker axes
-            },
-            background_line_style={
-                "stroke_color": GREY,
-                "stroke_width": 1,
-                "stroke_opacity": 0.8,
-            },
-        )
-        self.play(Create(grid), run_time=1)
-        # self.simulation_static_agent()
-        #        self.simulation_multiple_agents(num_agents=2, radius=3)
-        # self.simulation_multiple_agents(num_agents=2, radius=2, crossing=True)
-        # self.simulation_multiple_agents(num_agents=4, radius=3)
-        # self.simulation_multiple_agents(num_agents=6, radius=3)
-        self.simulation_multiple_agents(num_agents=6, radius=3, frames=1000)
-        self.play(FadeOut(grid))
