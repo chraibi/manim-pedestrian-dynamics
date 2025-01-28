@@ -29,7 +29,7 @@ def compute_total_influence(target_agent, other_agents):
     return total_influence
 
 
-def calculate_new_direction(
+def calculate_new_direction_from_Wall(
     direction,
     agent_position,
     agent_radius,
@@ -720,36 +720,34 @@ class NeighborInteraction(Scene):
 
         # Add the overlay
         self.play(FadeIn(speed_overlay), run_time=1)
-        # for new_A in [1, 1.5, 1]:
-        #     self.play(
-        #         A.animate.set_value(new_A),  # Change the ValueTracker
-        #         Circumscribe(info_text2[0], color=RED, time_width=0.1),
-        #         run_time=2,
-        #     )
-        # for new_B in [1, 0.5, 1]:
-        #     self.play(
-        #         B.animate.set_value(new_B),
-        #         Circumscribe(info_text2[6], color=RED, time_width=0.1),
-        #         run_time=2,
-        #     )
+        for new_A in [1, 1.5, 1]:
+            self.play(
+                A.animate.set_value(new_A),  # Change the ValueTracker
+                Circumscribe(info_text2[0], color=RED, time_width=0.1),
+                run_time=2,
+            )
+        for new_B in [1, 0.5, 1]:
+            self.play(
+                B.animate.set_value(new_B),
+                Circumscribe(info_text2[6], color=RED, time_width=0.1),
+                run_time=2,
+            )
         # Remove the overlay
-
-        # Add the overlay
         self.play(FadeOut(speed_overlay), FadeIn(direction_overlay), run_time=1)
 
-        # for new_T in [1, 0.5, 1.5, 1]:
-        #     self.play(
-        #         T.animate.set_value(new_T),
-        #         Circumscribe(info_text1[0], color=RED, time_width=0.1),
-        #         run_time=2,
-        #     )
+        for new_T in [1, 0.5, 1.5, 1]:
+            self.play(
+                T.animate.set_value(new_T),
+                Circumscribe(info_text1[0], color=RED, time_width=0.1),
+                run_time=2,
+            )
 
-        # for new_v0 in [1, 0.5, 1.5, 1]:
-        #     self.play(
-        #         v0.animate.set_value(new_v0),
-        #         Circumscribe(info_text1[6], color=RED, time_width=0.1),
-        #         run_time=2,
-        #     )
+        for new_v0 in [1, 0.5, 1.5, 1]:
+            self.play(
+                v0.animate.set_value(new_v0),
+                Circumscribe(info_text1[6], color=RED, time_width=0.1),
+                run_time=2,
+            )
 
         self.play(FadeOut(direction_overlay), run_time=1)
         self.wait(1)
@@ -795,13 +793,13 @@ class NeighborInteraction(Scene):
 
         # Other agent positions
         agent_positions = (
-            [agent_circle.get_center() + m.RIGHT * 2 + m.UP * 0.6]
-            + [agent_circle.get_center() + m.LEFT * 3 + m.UP * 0.2]
-            + [agent_circle.get_center() + m.UP * 1.0 + m.RIGHT * 0.7]
+            # [agent_circle.get_center() + m.RIGHT * 2 + m.UP * 0.6]
+            # + [agent_circle.get_center() + m.LEFT * 3 + m.UP * 0.2]
+            [agent_circle.get_center() + m.UP * 1.0 + m.RIGHT * 0.7]
             # + [agent_circle.get_center() + m.UP * 1.6 + m.LEFT * 0.7]
             + [agent_circle.get_center() + m.LEFT * 1.5 + m.UP * 0.5]
-            + [agent_circle.get_center() + RIGHT * 2 + m.DOWN * 1.2]
-            + [agent_circle.get_center() + m.LEFT * 2 + m.DOWN * 0.7]
+            + [agent_circle.get_center() + RIGHT * 1 + m.DOWN * 1.2]
+            # + [agent_circle.get_center() + m.LEFT * 2 + m.DOWN * 0.7]
         )
 
         # Prepare agents with initial data
@@ -1297,7 +1295,9 @@ class NeighborInteraction(Scene):
             self.wait(2)
             influence_shown = False
             for _ in range(50):
-                new_direction, what = calculate_new_direction(
+                new_direction, what = calculate_new_direction_from_Wall(
+                    direction, agent_position, agent_radius, wall, wall_buffer_distance
+                )(
                     direction,
                     agent_position,
                     agent_radius,
@@ -1450,10 +1450,11 @@ class NeighborInteraction(Scene):
         self.wait(1)
 
     def simulation_multiple_agents(
-        self, num_agents=4, radius=5, frames=50, crossing=False
+        self, num_agents=4, radius=5, frames=200, crossing=False, StopAtExit=True
     ):
         # Initialize agents
         agent_radius = 0.5
+        time_gap = 1.0
         agents = []
 
         # Compute equidistant points on the circle
@@ -1514,7 +1515,7 @@ class NeighborInteraction(Scene):
             always_redraw(
                 lambda agent=agent: Line(
                     start=agent["position"],
-                    end=agent["position"] + agent["orientation"],
+                    end=agent["position"] + agent["velocity"],
                     color=agent["color"],
                     buff=0,
                 ).add_tip(tip_shape=StealthTip, tip_length=0.1, tip_width=0.5)
@@ -1538,7 +1539,7 @@ class NeighborInteraction(Scene):
         )
         # Simulation loop
         for frame in range(frames):
-            dt = 0.1  # Time step
+            dt = 0.01  # Time step
             stop_simulation = False
             for i, agent in enumerate(agents):
                 # Calculate desired direction toward the destination
@@ -1553,22 +1554,28 @@ class NeighborInteraction(Scene):
                     stop_simulation = True
                     break
                 # Calculate influence from other agents
-                influences = [
-                    compute_total_influence(
-                        agent,
-                        [other_agent for j, other_agent in enumerate(agents) if j != i],
-                    )
-                ]
+                influences = []
+                s_gaps = []  # Track s_gap values for spacing calculation
+                for j, other_agent in enumerate(agents):
+                    if i != j:  # Skip self
+                        influence, _, s_gap, _ = neighbor_repulsion(agent, other_agent)
+                        influences.append(influence)
+                        s_gaps.append(s_gap)
 
+                # total_influence = sum(influences, np.zeros(3))
                 # Combine desired direction and influence
                 resulting_direction = desired_direction + sum(influences)
                 resulting_direction /= np.linalg.norm(resulting_direction)  # Normalize
+                # Calculate minimum spacing
+                min_spacing = min(s_gaps)
 
+                # Calculate optimal speed
+                optimal_speed = np.clip(
+                    min_spacing / time_gap, 0, 1.0
+                )  # Clip speed between 0 and 1
                 # Update agent's properties
                 agent["orientation"] = resulting_direction
-                agent["velocity"] = (
-                    resulting_direction * 1
-                )  # Set velocity (1 unit per second)
+                agent["velocity"] = resulting_direction * optimal_speed
                 agent["position"] += dt * agent["velocity"]
                 agent["trajectory_points"].append(np.array(agent["position"]))
                 # Update visualization
@@ -1577,7 +1584,7 @@ class NeighborInteraction(Scene):
                 # Add direction arrow (optional for visualization)
 
             # Break the outer loop if the simulation should stop
-            if stop_simulation:
+            if stop_simulation and StopAtExit:
                 break
             # Animate agent movements
             self.play(
@@ -1599,12 +1606,11 @@ class NeighborInteraction(Scene):
 
     # ===============================================================
     def construct(self):
-        self.ShowIntro()
-        self.create_predicted_distance_act()
-        self.create_neighbors_act()
-        self.create_wall_act()
+        # self.ShowIntro()
+        #   self.create_predicted_distance_act()
+        # self.create_neighbors_act()
+        #   self.create_wall_act()  #
 
-        # Simulations
         grid = NumberPlane(
             axis_config={
                 "stroke_color": GREY,  # Axes in red
@@ -1617,10 +1623,10 @@ class NeighborInteraction(Scene):
             },
         )
         self.play(Create(grid), run_time=1)
-        self.simulation_static_agent()
-        self.simulation_multiple_agents(num_agents=2, radius=3)
-        self.simulation_multiple_agents(num_agents=2, radius=2, crossing=True)
-        self.simulation_multiple_agents(num_agents=4, radius=3)
-        self.simulation_multiple_agents(num_agents=6, radius=3)
-        self.simulation_multiple_agents(num_agents=8, radius=3, frames=200)
+        # self.simulation_static_agent()
+        #        self.simulation_multiple_agents(num_agents=2, radius=3)
+        # self.simulation_multiple_agents(num_agents=2, radius=2, crossing=True)
+        # self.simulation_multiple_agents(num_agents=4, radius=3)
+        # self.simulation_multiple_agents(num_agents=6, radius=3)
+        self.simulation_multiple_agents(num_agents=6, radius=3, frames=1000)
         self.play(FadeOut(grid))
